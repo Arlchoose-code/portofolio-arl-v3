@@ -52,7 +52,8 @@ export function ChatInput({ onSend, onClear, disabled = false }: ChatInputProps)
           placeholder="Tanya apa saja tentang Syahril..."
           rows={1}
           disabled={disabled}
-          className="flex-1 bg-transparent resize-none outline-none text-base md:text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] max-h-28 py-1 px-1"
+          className="flex-1 bg-transparent resize-none outline-none text-[16px] sm:text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] max-h-28 py-1 px-1 touch-manipulation"
+          style={{ fontSize: '16px' }}
         />
 
         <div className="flex items-center gap-1">

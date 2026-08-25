@@ -364,7 +364,7 @@ export function ChatWidget() {
             data-lenis-prevent="true"
             onWheel={(e) => e.stopPropagation()}
             onTouchMove={(e) => e.stopPropagation()}
-            className="fixed bottom-24 right-6 w-[400px] max-w-[calc(100vw-32px)] h-[560px] max-h-[80vh] rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-2xl z-50 flex flex-col overflow-hidden backdrop-blur-xl overscroll-contain"
+            className="fixed bottom-4 right-4 left-4 sm:left-auto sm:bottom-24 sm:right-6 w-auto sm:w-[400px] max-w-full sm:max-w-[calc(100vw-32px)] h-[560px] max-h-[85vh] sm:max-h-[80vh] rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-2xl z-50 flex flex-col overflow-hidden backdrop-blur-xl overscroll-contain"
           >
             {/* Clean & Compact Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)] bg-[var(--bg-elevated)]/70 select-none">
