@@ -271,6 +271,7 @@ export function EmailRichEditor({
       <div className="flex flex-wrap items-center gap-0.5 p-1.5 border-b border-[var(--border)] bg-[var(--bg-elevated)]/60 text-[var(--text-secondary)] select-none">
         <button
           type="button"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => editor?.chain().focus().toggleBold().run()}
           disabled={disabled || !editor}
           className={`p-1.5 rounded-lg hover:bg-[var(--accent-soft)] transition-colors ${
@@ -283,6 +284,7 @@ export function EmailRichEditor({
 
         <button
           type="button"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => editor?.chain().focus().toggleItalic().run()}
           disabled={disabled || !editor}
           className={`p-1.5 rounded-lg hover:bg-[var(--accent-soft)] transition-colors ${
@@ -295,6 +297,7 @@ export function EmailRichEditor({
 
         <button
           type="button"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => editor?.chain().focus().toggleUnderline().run()}
           disabled={disabled || !editor}
           className={`p-1.5 rounded-lg hover:bg-[var(--accent-soft)] transition-colors ${
@@ -307,6 +310,7 @@ export function EmailRichEditor({
 
         <button
           type="button"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => editor?.chain().focus().toggleStrike().run()}
           disabled={disabled || !editor}
           className={`p-1.5 rounded-lg hover:bg-[var(--accent-soft)] transition-colors ${
@@ -321,6 +325,7 @@ export function EmailRichEditor({
 
         <button
           type="button"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => editor?.chain().focus().toggleBulletList().run()}
           disabled={disabled || !editor}
           className={`p-1.5 rounded-lg hover:bg-[var(--accent-soft)] transition-colors ${
@@ -333,6 +338,7 @@ export function EmailRichEditor({
 
         <button
           type="button"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => editor?.chain().focus().toggleOrderedList().run()}
           disabled={disabled || !editor}
           className={`p-1.5 rounded-lg hover:bg-[var(--accent-soft)] transition-colors ${
@@ -345,6 +351,7 @@ export function EmailRichEditor({
 
         <button
           type="button"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => editor?.chain().focus().toggleBlockquote().run()}
           disabled={disabled || !editor}
           className={`p-1.5 rounded-lg hover:bg-[var(--accent-soft)] transition-colors ${
@@ -357,6 +364,7 @@ export function EmailRichEditor({
 
         <button
           type="button"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => editor?.chain().focus().toggleCodeBlock().run()}
           disabled={disabled || !editor}
           className={`p-1.5 rounded-lg hover:bg-[var(--accent-soft)] transition-colors ${
@@ -372,6 +380,7 @@ export function EmailRichEditor({
         {/* Link Button with Dialog Trigger */}
         <button
           type="button"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={openLinkDialog}
           disabled={disabled || !editor}
           className={`p-1.5 rounded-lg hover:bg-[var(--accent-soft)] transition-colors ${
@@ -385,6 +394,7 @@ export function EmailRichEditor({
         {editor?.isActive('link') && (
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={handleRemoveLink}
             disabled={disabled}
             className="p-1.5 rounded-lg hover:bg-[var(--accent-soft)] text-rose-500 transition-colors"
@@ -406,6 +416,7 @@ export function EmailRichEditor({
             />
             <button
               type="button"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => fileInputRef.current?.click()}
               disabled={disabled || uploadingAttachment}
               className={`p-1.5 rounded-lg hover:bg-[var(--accent-soft)] transition-colors ${
@@ -418,12 +429,22 @@ export function EmailRichEditor({
           </>
         )}
 
+        {/* Clear Formatting (Eraser) */}
         <button
           type="button"
-          onClick={() => editor?.chain().focus().unsetAllMarks().clearNodes().setParagraph().run()}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            if (!editor) return;
+            const { empty } = editor.state.selection;
+            if (empty) {
+              editor.chain().focus().selectAll().unsetAllMarks().clearNodes().run();
+            } else {
+              editor.chain().focus().unsetAllMarks().clearNodes().run();
+            }
+          }}
           disabled={disabled || !editor}
-          className="p-1.5 rounded-lg hover:bg-[var(--accent-soft)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-          title="Hapus Pemformatan Teks"
+          className="p-1.5 rounded-lg hover:bg-[var(--accent-soft)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors active:scale-95"
+          title="Hapus Pemformatan Teks (Clear Formatting)"
         >
           <Eraser className="w-3.5 h-3.5" />
         </button>
@@ -431,6 +452,7 @@ export function EmailRichEditor({
         <div className="ml-auto flex items-center gap-0.5">
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor?.chain().focus().undo().run()}
             disabled={disabled || !editor || !canUndo}
             className={`p-1.5 rounded-lg transition-colors ${
@@ -444,6 +466,7 @@ export function EmailRichEditor({
           </button>
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor?.chain().focus().redo().run()}
             disabled={disabled || !editor || !canRedo}
             className={`p-1.5 rounded-lg transition-colors ${
