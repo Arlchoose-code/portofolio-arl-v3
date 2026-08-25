@@ -514,12 +514,12 @@ function AdminMailboxContent() {
             variant="outline"
             size="sm"
             onClick={() => setSettingsModalOpen(true)}
-            className="gap-1.5 text-xs"
+            className="gap-1.5 text-xs font-semibold"
           >
             <Settings className="w-3.5 h-3.5" />
-            <span>Pengaturan Brevo</span>
+            <span>Kelola Akun &amp; Pengaturan Email</span>
             {emailSetting?.is_configured ? (
-              <span className="w-2 h-2 rounded-full bg-emerald-500" title="Brevo Terkonfigurasi" />
+              <span className="w-2 h-2 rounded-full bg-emerald-500" title="Provider Terkonfigurasi" />
             ) : (
               <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" title="Perlu Konfigurasi API Key" />
             )}
@@ -698,11 +698,47 @@ function AdminMailboxContent() {
             </button>
           </div>
 
-          {/* Brevo Inbound Status Pill */}
+          {/* Active Email Accounts List & Management Card */}
+          <div className="p-3 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+                <AtSign className="w-3.5 h-3.5 text-lime-700 dark:text-brand" />
+                <span>Akun &amp; Identitas</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setSettingsModalOpen(true)}
+                className="text-[10px] text-lime-700 dark:text-brand font-semibold hover:underline"
+              >
+                + Kelola
+              </button>
+            </div>
+
+            <div className="space-y-1.5 max-h-32 overflow-y-auto pr-0.5 text-xs">
+              {sendersList.map((s, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between gap-1 p-1.5 rounded-lg bg-[var(--bg-elevated)]/60 border border-[var(--border)] text-[11px]"
+                >
+                  <div className="truncate min-w-0">
+                    <div className="font-semibold text-[var(--text-primary)] truncate">{s.name}</div>
+                    <div className="text-[10px] text-[var(--text-muted)] font-mono truncate">{s.email}</div>
+                  </div>
+                  {s.is_default && (
+                    <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-lime-500/20 text-lime-700 dark:text-brand shrink-0">
+                      Utama
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Engine Status Pill */}
           <div className="p-3 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] space-y-1.5 text-center">
             <div className="flex items-center justify-center gap-1.5 text-[11px] font-mono font-bold text-lime-700 dark:text-brand">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Brevo Engine</span>
+              <span>Hybrid Engine</span>
             </div>
             <p className="text-[10px] text-[var(--text-muted)] leading-tight">
               {emailSetting?.is_configured
