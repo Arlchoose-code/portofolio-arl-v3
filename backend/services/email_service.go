@@ -346,6 +346,78 @@ func (s *EmailService) FetchBrevoSenders(ctx context.Context, apiKey string) ([]
 	return senders, nil
 }
 
+// CreateBrevoSender creates a new verified sender identity in Brevo account
+func (s *EmailService) CreateBrevoSender(ctx context.Context, apiKey, name, email string) (*structs.SenderItem, error) {
+	if apiKey == "" {
+		return nil, fmt.Errorf("kunci API Brevo tidak boleh kosong")
+	}
+
+	payload := map[string]string{
+		"name":  strings.TrimSpace(name),
+		"email": strings.TrimSpace(email),
+	}
+	payloadBytes, _ := json.Marshal(payload)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.brevo.com/v3/senders", bytes.NewReader(payloadBytes))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("api-key", strings.TrimSpace(apiKey))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("accept", "application/json")
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	respBytes, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("Brevo API error (%d): %s", resp.StatusCode, string(respBytes))
+	}
+
+	var createResp struct {
+		ID int `json:"id"`
+	}
+	_ = json.Unmarshal(respBytes, &createResp)
+
+	return &structs.SenderItem{
+		ID:     createResp.ID,
+		Name:   name,
+		Email:  email,
+		Active: true,
+	}, nil
+}
+
+// DeleteBrevoSender deletes a sender identity from Brevo account
+func (s *EmailService) DeleteBrevoSender(ctx context.Context, apiKey string, senderID int) error {
+	if apiKey == "" || senderID <= 0 {
+		return nil
+	}
+
+	url := fmt.Sprintf("https://api.brevo.com/v3/senders/%d", senderID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("api-key", strings.TrimSpace(apiKey))
+	req.Header.Set("accept", "application/json")
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 && resp.StatusCode != http.StatusNotFound {
+		respBytes, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("Brevo delete error (%d): %s", resp.StatusCode, string(respBytes))
+	}
+
+	return nil
+}
+
 // SendTransactionalEmail orchestrates sending via Brevo, Resend, or Hybrid fallback
 func (s *EmailService) SendTransactionalEmail(
 	ctx context.Context,

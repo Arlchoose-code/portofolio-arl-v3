@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -25,8 +26,14 @@ func NewMailboxController() *MailboxController {
 func (ctrl *MailboxController) ListEmails(c *gin.Context) {
 	params := services.Pagination.GetPaginationParams(c)
 	folder := strings.ToLower(strings.TrimSpace(c.DefaultQuery("folder", "inbox"))) // inbox, sent, starred, trash, all
+	account := strings.ToLower(strings.TrimSpace(c.Query("account")))
 
 	query := config.DB.Model(&models.EmailThread{})
+
+	// Filter by specific account if provided and not "all"
+	if account != "" && account != "all" {
+		query = query.Where("id IN (SELECT DISTINCT thread_id FROM email_messages WHERE LOWER(to_email) = ? OR LOWER(from_email) = ?)", account, account)
+	}
 
 	switch folder {
 	case "inbox":
@@ -54,6 +61,12 @@ func (ctrl *MailboxController) ListEmails(c *gin.Context) {
 	query.Scopes(services.Pagination.Paginate(params)).
 		Order("last_message_at DESC, id DESC").
 		Find(&threads)
+
+	for i := range threads {
+		var msgs []models.EmailMessage
+		config.DB.Where("thread_id = ?", threads[i].ID).Order("id ASC").Find(&msgs)
+		threads[i].Messages = msgs
+	}
 
 	meta := services.Pagination.BuildMeta(params, total)
 	c.JSON(http.StatusOK, structs.SuccessWithMeta("Email threads retrieved", threads, meta))
@@ -386,17 +399,33 @@ func (ctrl *MailboxController) DeleteThread(c *gin.Context) {
 }
 
 func (ctrl *MailboxController) GetMailboxStats(c *gin.Context) {
+	account := strings.ToLower(strings.TrimSpace(c.Query("account")))
+
 	var inboxCount int64
 	var unreadCount int64
 	var sentCount int64
 	var starredCount int64
 	var trashCount int64
 
-	config.DB.Model(&models.EmailThread{}).Where("is_trash = false").Count(&inboxCount)
-	config.DB.Model(&models.EmailThread{}).Where("is_trash = false AND has_unread = true").Count(&unreadCount)
-	config.DB.Model(&models.EmailMessage{}).Where("direction = 'outbound'").Count(&sentCount)
-	config.DB.Model(&models.EmailThread{}).Where("is_trash = false AND is_starred = true").Count(&starredCount)
-	config.DB.Model(&models.EmailThread{}).Where("is_trash = true").Count(&trashCount)
+	inboxQ := config.DB.Model(&models.EmailThread{}).Where("is_trash = false AND is_archived = false AND id IN (SELECT DISTINCT thread_id FROM email_messages WHERE direction = 'inbound')")
+	unreadQ := config.DB.Model(&models.EmailThread{}).Where("is_trash = false AND has_unread = true")
+	sentQ := config.DB.Model(&models.EmailMessage{}).Where("direction = 'outbound'")
+	starredQ := config.DB.Model(&models.EmailThread{}).Where("is_trash = false AND is_starred = true")
+	trashQ := config.DB.Model(&models.EmailThread{}).Where("is_trash = true")
+
+	if account != "" && account != "all" {
+		inboxQ = inboxQ.Where("id IN (SELECT DISTINCT thread_id FROM email_messages WHERE LOWER(to_email) = ? OR LOWER(from_email) = ?)", account, account)
+		unreadQ = unreadQ.Where("id IN (SELECT DISTINCT thread_id FROM email_messages WHERE LOWER(to_email) = ? OR LOWER(from_email) = ?)", account, account)
+		sentQ = sentQ.Where("LOWER(from_email) = ?", account)
+		starredQ = starredQ.Where("id IN (SELECT DISTINCT thread_id FROM email_messages WHERE LOWER(to_email) = ? OR LOWER(from_email) = ?)", account, account)
+		trashQ = trashQ.Where("id IN (SELECT DISTINCT thread_id FROM email_messages WHERE LOWER(to_email) = ? OR LOWER(from_email) = ?)", account, account)
+	}
+
+	inboxQ.Count(&inboxCount)
+	unreadQ.Count(&unreadCount)
+	sentQ.Count(&sentCount)
+	starredQ.Count(&starredCount)
+	trashQ.Count(&trashCount)
 
 	c.JSON(http.StatusOK, structs.SuccessResponse("Mailbox stats retrieved", gin.H{
 		"inbox_count":   inboxCount,
@@ -468,6 +497,174 @@ func (ctrl *MailboxController) SyncBrevoSenders(c *gin.Context) {
 
 	c.JSON(http.StatusOK, structs.SuccessResponse(fmt.Sprintf("Berhasil menyinkronkan %d pengirim terverifikasi dari Brevo", len(senders)), gin.H{
 		"senders": senders,
+	}))
+}
+
+func (ctrl *MailboxController) AddSender(c *gin.Context) {
+	var req struct {
+		Name  string `json:"name" binding:"required"`
+		Email string `json:"email" binding:"required,email"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, structs.ValidationErrorResponse("Nama dan email pengirim wajib diisi dengan benar", nil))
+		return
+	}
+
+	var setting models.EmailSetting
+	if err := config.DB.First(&setting).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, structs.ErrorResponse("Pengaturan email belum diinisialisasi"))
+		return
+	}
+
+	var senders []structs.SenderItem
+	if setting.CustomSendersJSON != "" {
+		_ = json.Unmarshal([]byte(setting.CustomSendersJSON), &senders)
+	}
+
+	// Try registering with Brevo API if key is present
+	var brevoSender *structs.SenderItem
+	if setting.BrevoAPIKey != "" {
+		bs, err := services.Email.CreateBrevoSender(c.Request.Context(), setting.BrevoAPIKey, req.Name, req.Email)
+		if err != nil {
+			log.Printf("[Brevo AddSender Warning] Failed to register sender on Brevo: %v", err)
+		} else {
+			brevoSender = bs
+		}
+	}
+
+	// Update local senders list
+	found := false
+	for i := range senders {
+		if strings.EqualFold(senders[i].Email, req.Email) {
+			senders[i].Name = req.Name
+			if brevoSender != nil && brevoSender.ID > 0 {
+				senders[i].ID = brevoSender.ID
+			}
+			senders[i].Active = true
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		senderID := 0
+		if brevoSender != nil {
+			senderID = brevoSender.ID
+		}
+		senders = append(senders, structs.SenderItem{
+			ID:        senderID,
+			Name:      req.Name,
+			Email:     req.Email,
+			IsDefault: len(senders) == 0,
+			Active:    true,
+		})
+	}
+
+	// Also add to AllowedInboundEmails if not present so receiving is automatically whitelisted
+	currentInbound := strings.TrimSpace(setting.AllowedInboundEmails)
+	if currentInbound == "" {
+		setting.AllowedInboundEmails = req.Email
+	} else if !strings.Contains(strings.ToLower(currentInbound), strings.ToLower(req.Email)) {
+		setting.AllowedInboundEmails = currentInbound + ", " + req.Email
+	}
+
+	sendersBytes, _ := json.Marshal(senders)
+	setting.CustomSendersJSON = string(sendersBytes)
+	config.DB.Save(&setting)
+
+	c.JSON(http.StatusOK, structs.SuccessResponse("Identitas pengirim berhasil ditambahkan & didaftarkan ke Brevo", gin.H{
+		"senders": senders,
+	}))
+}
+
+func (ctrl *MailboxController) DeleteSender(c *gin.Context) {
+	email := strings.TrimSpace(c.Query("email"))
+	idStr := strings.TrimSpace(c.Param("id"))
+	senderID, _ := strconv.Atoi(idStr)
+
+	var setting models.EmailSetting
+	if err := config.DB.First(&setting).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, structs.ErrorResponse("Pengaturan email belum diinisialisasi"))
+		return
+	}
+
+	var senders []structs.SenderItem
+	if setting.CustomSendersJSON != "" {
+		_ = json.Unmarshal([]byte(setting.CustomSendersJSON), &senders)
+	}
+
+	var updated []structs.SenderItem
+	for _, s := range senders {
+		match := false
+		if senderID > 0 && s.ID == senderID {
+			match = true
+		} else if email != "" && strings.EqualFold(s.Email, email) {
+			match = true
+		}
+
+		if match {
+			if setting.BrevoAPIKey != "" && s.ID > 0 {
+				_ = services.Email.DeleteBrevoSender(c.Request.Context(), setting.BrevoAPIKey, s.ID)
+			}
+		} else {
+			updated = append(updated, s)
+		}
+	}
+
+	sendersBytes, _ := json.Marshal(updated)
+	setting.CustomSendersJSON = string(sendersBytes)
+	config.DB.Save(&setting)
+
+	c.JSON(http.StatusOK, structs.SuccessResponse("Identitas pengirim berhasil dihapus", gin.H{
+		"senders": updated,
+	}))
+}
+
+func (ctrl *MailboxController) SetDefaultSender(c *gin.Context) {
+	var req struct {
+		Email string `json:"email" binding:"required"`
+		Name  string `json:"name"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, structs.ValidationErrorResponse("Email pengirim wajib diisi", nil))
+		return
+	}
+
+	var setting models.EmailSetting
+	if err := config.DB.First(&setting).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, structs.ErrorResponse("Pengaturan email belum diinisialisasi"))
+		return
+	}
+
+	var senders []structs.SenderItem
+	if setting.CustomSendersJSON != "" {
+		_ = json.Unmarshal([]byte(setting.CustomSendersJSON), &senders)
+	}
+
+	setting.DefaultSenderEmail = req.Email
+	if req.Name != "" {
+		setting.DefaultSenderName = req.Name
+	}
+
+	for i := range senders {
+		if strings.EqualFold(senders[i].Email, req.Email) {
+			senders[i].IsDefault = true
+			if req.Name != "" {
+				senders[i].Name = req.Name
+			}
+		} else {
+			senders[i].IsDefault = false
+		}
+	}
+
+	sendersBytes, _ := json.Marshal(senders)
+	setting.CustomSendersJSON = string(sendersBytes)
+	config.DB.Save(&setting)
+
+	c.JSON(http.StatusOK, structs.SuccessResponse("Pengirim utama default berhasil diperbarui", gin.H{
+		"senders":              senders,
+		"default_sender_email": setting.DefaultSenderEmail,
+		"default_sender_name":  setting.DefaultSenderName,
 	}))
 }
 

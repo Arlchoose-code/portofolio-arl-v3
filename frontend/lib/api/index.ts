@@ -171,7 +171,7 @@ export const usersApi = {
 
 // Webmail & Mailbox (Brevo)
 export const mailboxApi = {
-  listThreads: (params?: PaginationParams & { folder?: string }) =>
+  listThreads: (params?: PaginationParams & { folder?: string; account?: string }) =>
     client.getPaginated<EmailThread>('admin/mailbox/threads', params),
   getThread: (id: number) => client.get<EmailThread>(`admin/mailbox/threads/${id}`),
   send: (data: {
@@ -197,7 +197,8 @@ export const mailboxApi = {
   updateStatus: (id: number, data: { is_read?: boolean; is_starred?: boolean; is_trash?: boolean }) =>
     client.put<EmailThread>(`admin/mailbox/threads/${id}/status`, data),
   deleteThread: (id: number) => client.delete(`admin/mailbox/threads/${id}`),
-  getStats: () => client.get<MailboxStats>('admin/mailbox/stats'),
+  getStats: (account?: string) =>
+    client.get<MailboxStats>(account && account !== 'all' ? `admin/mailbox/stats?account=${encodeURIComponent(account)}` : 'admin/mailbox/stats'),
   getSenders: () =>
     client.get<{
       senders: import('@/types').SenderItem[];
@@ -207,6 +208,20 @@ export const mailboxApi = {
       reply_to_name?: string;
       allowed_inbound_emails?: string;
     }>('admin/mailbox/senders'),
+  addSender: (data: { name: string; email: string }) =>
+    client.post<{ senders: import('@/types').SenderItem[] }>('admin/mailbox/senders', data),
+  deleteSender: (idOrEmail: number | string) =>
+    client.delete<{ senders: import('@/types').SenderItem[] }>(
+      typeof idOrEmail === 'number'
+        ? `admin/mailbox/senders/${idOrEmail}`
+        : `admin/mailbox/senders/0?email=${encodeURIComponent(idOrEmail)}`
+    ),
+  setDefaultSender: (data: { email: string; name?: string }) =>
+    client.put<{
+      senders: import('@/types').SenderItem[];
+      default_sender_email: string;
+      default_sender_name: string;
+    }>('admin/mailbox/senders/default', data),
   syncBrevoSenders: () =>
     client.post<{ senders: import('@/types').SenderItem[] }>('admin/mailbox/sync-senders', {}),
   getSettings: () => client.get<EmailSetting>('admin/mailbox/settings'),
