@@ -18,14 +18,17 @@ export class ApiClient {
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
     const url = `${this.basePath}/${cleanEndpoint}`;
 
+    const isFormData = typeof FormData !== 'undefined' && options?.body instanceof FormData;
+    const headers: Record<string, string> = {
+      ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
+      ...(options?.headers as Record<string, string>),
+    };
+
     try {
       const res = await fetch(url, {
         ...options,
         credentials: options?.credentials || 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...options?.headers,
-        },
+        headers,
       });
 
       const data = await res.json();
@@ -113,16 +116,18 @@ export class ApiClient {
   }
 
   async post<T = any>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
     return this.request<T>(endpoint, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: isFormData ? data : data !== undefined ? JSON.stringify(data) : undefined,
     });
   }
 
   async put<T = any>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
     return this.request<T>(endpoint, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: isFormData ? data : data !== undefined ? JSON.stringify(data) : undefined,
     });
   }
 

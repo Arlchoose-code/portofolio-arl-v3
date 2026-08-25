@@ -372,6 +372,18 @@ func (ctrl *MailboxController) ReplyEmail(c *gin.Context) {
 func (ctrl *MailboxController) UploadAttachment(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
+		if c.Request.MultipartForm != nil && len(c.Request.MultipartForm.File) > 0 {
+			for _, files := range c.Request.MultipartForm.File {
+				if len(files) > 0 {
+					file = files[0]
+					err = nil
+					break
+				}
+			}
+		}
+	}
+
+	if file == nil || err != nil {
 		c.JSON(http.StatusBadRequest, structs.ErrorResponse("File lampiran tidak ditemukan"))
 		return
 	}
