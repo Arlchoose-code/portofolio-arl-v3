@@ -15,6 +15,8 @@ export default function AdminAISettingsPage() {
 
   const [activeProvider, setActiveProvider] = useState<'ollama' | 'openai_compatible'>('ollama');
   const [ollamaBaseUrl, setOllamaBaseUrl] = useState('http://localhost:11434');
+  const [ollamaApiKey, setOllamaApiKey] = useState('');
+  const [ollamaApiKeyMasked, setOllamaApiKeyMasked] = useState('');
   const [ollamaModel, setOllamaModel] = useState('gemma4:31b-cloud');
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [openaiBaseUrl, setOpenaiBaseUrl] = useState('https://api.openai.com/v1');
@@ -37,6 +39,7 @@ export default function AdminAISettingsPage() {
         const s = res.data;
         setActiveProvider(s.active_provider || s.provider || 'ollama');
         setOllamaBaseUrl(s.ollama_base_url || 'http://localhost:11434');
+        setOllamaApiKeyMasked(s.ollama_api_key_masked || '');
         setOllamaModel(s.ollama_model || 'gemma4:31b-cloud');
         setAvailableModels(s.ollama_available_models || []);
         setOpenaiBaseUrl(s.openai_base_url || 'https://api.openai.com/v1');
@@ -63,6 +66,7 @@ export default function AdminAISettingsPage() {
       const res = await aiApi.updateSettings({
         active_provider: activeProvider,
         ollama_base_url: ollamaBaseUrl,
+        ollama_api_key: ollamaApiKey || undefined,
         ollama_model: ollamaModel,
         openai_base_url: openaiBaseUrl,
         openai_api_key: openaiApiKey || undefined,
@@ -148,40 +152,59 @@ export default function AdminAISettingsPage() {
         </div>
 
         {activeProvider === 'ollama' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+          <div className="space-y-4 pt-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                  Ollama Base URL
+                </label>
+                <Input
+                  value={ollamaBaseUrl}
+                  onChange={(e) => setOllamaBaseUrl(e.target.value)}
+                  placeholder="http://localhost:11434"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                  Model Ollama
+                </label>
+                {availableModels.length > 0 ? (
+                  <select
+                    value={ollamaModel}
+                    onChange={(e) => setOllamaModel(e.target.value)}
+                    className="flex h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-lime-600 dark:focus:border-lime-600 dark:focus:border-brand"
+                  >
+                    {availableModels.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <Input
+                    value={ollamaModel}
+                    onChange={(e) => setOllamaModel(e.target.value)}
+                    placeholder="gemma4:31b-cloud"
+                  />
+                )}
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                Ollama Base URL
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] flex items-center justify-between">
+                <span>Ollama API Key (Opsional untuk Cloud / Remote)</span>
+                {ollamaApiKeyMasked && (
+                  <span className="text-[10px] font-mono text-[var(--text-muted)] lowercase">
+                    Tersimpan: {ollamaApiKeyMasked}
+                  </span>
+                )}
               </label>
               <Input
-                value={ollamaBaseUrl}
-                onChange={(e) => setOllamaBaseUrl(e.target.value)}
-                placeholder="http://localhost:11434"
+                type="password"
+                value={ollamaApiKey}
+                onChange={(e) => setOllamaApiKey(e.target.value)}
+                placeholder="Kosongkan jika Ollama lokal tanpa API key"
               />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                Model Ollama
-              </label>
-              {availableModels.length > 0 ? (
-                <select
-                  value={ollamaModel}
-                  onChange={(e) => setOllamaModel(e.target.value)}
-                  className="flex h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-lime-600 dark:focus:border-lime-600 dark:focus:border-brand"
-                >
-                  {availableModels.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <Input
-                  value={ollamaModel}
-                  onChange={(e) => setOllamaModel(e.target.value)}
-                  placeholder="gemma4:31b-cloud"
-                />
-              )}
             </div>
           </div>
         ) : (

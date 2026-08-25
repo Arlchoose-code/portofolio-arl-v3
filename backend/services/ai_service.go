@@ -185,6 +185,15 @@ func (s *AIService) streamOllama(
 		return err
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
+	if setting.OllamaAPIKey != "" {
+		key := strings.TrimSpace(setting.OllamaAPIKey)
+		if strings.HasPrefix(key, "Bearer ") {
+			httpReq.Header.Set("Authorization", key)
+		} else {
+			httpReq.Header.Set("Authorization", "Bearer "+key)
+		}
+		httpReq.Header.Set("x-api-key", key)
+	}
 
 	httpResp, err := s.client.Do(httpReq)
 	if err != nil {
