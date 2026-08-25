@@ -203,6 +203,22 @@ export function EmailHtmlViewer({
     setTimeout(measureAndSendHeight, 100);
     setTimeout(measureAndSendHeight, 400);
     setTimeout(measureAndSendHeight, 1200);
+
+    document.addEventListener('mousemove', function(e) {
+      try {
+        var rect = window.frameElement ? window.frameElement.getBoundingClientRect() : null;
+        var target = e.target;
+        var isInteractive = target && (target.tagName === 'A' || target.tagName === 'BUTTON' || (target.closest && (target.closest('a') || target.closest('button'))));
+        if (rect) {
+          window.parent.postMessage({
+            type: 'IFRAME_MOUSE_MOVE',
+            clientX: rect.left + e.clientX,
+            clientY: rect.top + e.clientY,
+            isInteractive: !!isInteractive
+          }, '*');
+        }
+      } catch (err) {}
+    });
   </script>
 </body>
 </html>`;

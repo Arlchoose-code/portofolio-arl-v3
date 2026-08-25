@@ -63,12 +63,38 @@ export function CustomCursor() {
       }
     };
 
+    const handleIframeMessage = (e: MessageEvent) => {
+      if (e.data && e.data.type === 'IFRAME_MOUSE_MOVE' && typeof e.data.clientX === 'number') {
+        xTo(e.data.clientX);
+        yTo(e.data.clientY);
+        if (e.data.isInteractive) {
+          gsap.to(cursor, {
+            width: 44,
+            height: 44,
+            backgroundColor: '#ffffff',
+            mixBlendMode: 'difference',
+            duration: 0.2,
+          });
+        } else {
+          gsap.to(cursor, {
+            width: 8,
+            height: 8,
+            backgroundColor: '#ffffff',
+            mixBlendMode: 'difference',
+            duration: 0.2,
+          });
+        }
+      }
+    };
+
     window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('message', handleIframeMessage);
     document.addEventListener('mouseover', handleMouseOver);
     document.addEventListener('mouseout', handleMouseOut);
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('message', handleIframeMessage);
       document.removeEventListener('mouseover', handleMouseOver);
       document.removeEventListener('mouseout', handleMouseOut);
     };
