@@ -1,4 +1,5 @@
 import { client } from './client';
+import { ensureJpegIfHeic } from '@/lib/image-utils';
 import {
   Project,
   ProjectCategory,
@@ -100,9 +101,10 @@ export const skillsApi = {
 // Media
 export const mediaApi = {
   list: (params?: PaginationParams) => client.getPaginated<Media>('admin/media', params),
-  upload: (file: File) => {
+  upload: async (file: File) => {
+    const processedFile = await ensureJpegIfHeic(file);
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', processedFile);
     return client.upload<Media>('admin/media/upload', formData);
   },
   delete: (id: number) => client.delete(`admin/media/${id}`),

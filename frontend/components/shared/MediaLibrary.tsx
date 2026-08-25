@@ -132,7 +132,7 @@ export function MediaLibrary({ open, onSelect, onClose }: MediaLibraryProps) {
                   Pilih atau seret gambar ke sini
                 </h3>
                 <p className="text-xs text-[var(--text-muted)] mb-6 max-w-sm">
-                  Format yang didukung: JPEG, PNG, WebP. Gambar berukuran besar akan otomatis dikompresi dan dikonversi ke WebP multi-tier.
+                  Format yang didukung: JPEG, PNG, WebP, GIF, dan iPhone HEIC/HEIF. Gambar akan otomatis dikompresi dan dikonversi ke WebP multi-tier.
                 </p>
                 <label className="cursor-pointer">
                   <Button variant="default" disabled={uploading} asChild>

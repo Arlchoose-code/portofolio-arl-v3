@@ -14,10 +14,15 @@ type SecurityService struct{}
 var Security = &SecurityService{}
 
 var allowedMimeTypes = map[string]bool{
-	"image/jpeg": true,
-	"image/jpg":  true,
-	"image/png":  true,
-	"image/webp": true,
+	"image/jpeg":          true,
+	"image/jpg":           true,
+	"image/png":           true,
+	"image/webp":          true,
+	"image/gif":           true,
+	"image/heic":          true,
+	"image/heif":          true,
+	"image/heic-sequence": true,
+	"image/heif-sequence": true,
 }
 
 func (s *SecurityService) ValidateFileSize(size int64, maxMB int64) bool {
@@ -55,6 +60,17 @@ func (s *SecurityService) CheckMagicBytes(file multipart.File) (string, error) {
 		// PNG check
 		if n >= 8 && bytes.Equal(buffer[:8], []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}) {
 			return "image/png", nil
+		}
+		// GIF check
+		if n >= 6 && (string(buffer[:6]) == "GIF87a" || string(buffer[:6]) == "GIF89a") {
+			return "image/gif", nil
+		}
+		// HEIC / HEIF check: ftyp box
+		if n >= 12 && string(buffer[4:8]) == "ftyp" {
+			brand := string(buffer[8:12])
+			if brand == "heic" || brand == "heix" || brand == "hevc" || brand == "hevx" || brand == "mif1" || brand == "msf1" {
+				return "image/heic", nil
+			}
 		}
 		return "", errors.New("invalid or unsupported file type")
 	}
