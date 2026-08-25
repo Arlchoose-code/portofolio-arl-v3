@@ -43,7 +43,7 @@ export function EmailHtmlViewer({
   const [parsedUnsubLink, setParsedUnsubLink] = useState<string | null>(null);
   const [previewMedia, setPreviewMedia] = useState<EmailAttachment | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [iframeHeight, setIframeHeight] = useState('auto');
+  const [iframeHeight, setIframeHeight] = useState<number>(120);
   const [isDark, setIsDark] = useState(false);
 
   // Sync theme with parent app
@@ -146,10 +146,9 @@ export function EmailHtmlViewer({
       background: transparent;
       margin: 0;
       padding: 0;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
+      height: auto;
       overflow-x: auto;
-      overflow-y: visible;
+      overflow-y: hidden;
       -webkit-text-size-adjust: 100%;
     }
     #email-content-wrapper {
@@ -157,9 +156,8 @@ export function EmailHtmlViewer({
       padding: 8px 4px;
       margin: 0;
       width: 100%;
-      min-height: 20px;
+      height: auto;
       color: ${isDark ? '#f1f5f9' : '#0f172a'};
-      overflow: visible;
     }
     img {
       max-width: 100% !important;
@@ -204,19 +202,14 @@ export function EmailHtmlViewer({
     ${contentToDisplay || `<p style="color: ${isDark ? '#94a3b8' : '#64748b'}; font-style: italic;">(Isi email kosong)</p>`}
   </div>
   <script>
+    var lastSentHeight = 0;
     function measureAndSendHeight() {
-      var el = document.getElementById('email-content-wrapper') || document.body;
+      var el = document.getElementById('email-content-wrapper');
       if (!el) return;
-      var h = Math.max(
-        el.scrollHeight || 0,
-        el.offsetHeight || 0,
-        el.getBoundingClientRect().height || 0,
-        document.body ? document.body.scrollHeight || 0 : 0,
-        document.documentElement ? document.documentElement.scrollHeight || 0 : 0
-      );
-      h = Math.ceil(h);
-      if (h > 10) {
-        window.parent.postMessage({ type: 'SET_IFRAME_HEIGHT', height: h + 20 }, '*');
+      var h = Math.ceil(Math.max(el.scrollHeight || 0, el.offsetHeight || 0, el.getBoundingClientRect().height || 0));
+      if (h > 10 && Math.abs(h - lastSentHeight) > 3) {
+        lastSentHeight = h;
+        window.parent.postMessage({ type: 'SET_IFRAME_HEIGHT', height: h }, '*');
       }
     }
     window.addEventListener('load', measureAndSendHeight);
@@ -236,11 +229,9 @@ export function EmailHtmlViewer({
       }
     }
     measureAndSendHeight();
-    setTimeout(measureAndSendHeight, 50);
-    setTimeout(measureAndSendHeight, 150);
+    setTimeout(measureAndSendHeight, 100);
     setTimeout(measureAndSendHeight, 400);
     setTimeout(measureAndSendHeight, 1000);
-    setTimeout(measureAndSendHeight, 2000);
 
     document.addEventListener('mousemove', function(e) {
       try {
@@ -266,16 +257,16 @@ export function EmailHtmlViewer({
       try {
         const doc = iframeRef.current.contentDocument || iframeRef.current.contentWindow?.document;
         if (doc) {
-          const wrapper = doc.getElementById('email-content-wrapper') || doc.body;
-          const h = Math.max(
-            wrapper.scrollHeight || 0,
-            wrapper.offsetHeight || 0,
-            wrapper.getBoundingClientRect().height || 0,
-            doc.body?.scrollHeight || 0,
-            doc.documentElement?.scrollHeight || 0
-          );
-          if (h > 10) {
-            setIframeHeight(`${Math.ceil(h) + 20}px`);
+          const wrapper = doc.getElementById('email-content-wrapper');
+          if (wrapper) {
+            const h = Math.ceil(Math.max(
+              wrapper.scrollHeight || 0,
+              wrapper.offsetHeight || 0,
+              wrapper.getBoundingClientRect().height || 0
+            ));
+            if (h > 10) {
+              setIframeHeight((prev) => (Math.abs(prev - h) > 3 ? h + 6 : prev));
+            }
           }
         }
       } catch {}
@@ -285,20 +276,18 @@ export function EmailHtmlViewer({
   useEffect(() => {
     syncHeight();
     const t1 = setTimeout(syncHeight, 100);
-    const t2 = setTimeout(syncHeight, 400);
-    const t3 = setTimeout(syncHeight, 1200);
+    const t2 = setTimeout(syncHeight, 500);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
-      clearTimeout(t3);
     };
   }, [contentToDisplay, isDark]);
 
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
       if (e.data && e.data.type === 'SET_IFRAME_HEIGHT' && typeof e.data.height === 'number') {
-        const nextH = Math.min(Math.max(e.data.height, 60), 20000);
-        setIframeHeight(`${nextH}px`);
+        const targetH = Math.max(e.data.height, 40);
+        setIframeHeight((prev) => (Math.abs(prev - targetH) > 3 ? targetH + 6 : prev));
       }
     };
     window.addEventListener('message', handleMessage);
@@ -383,7 +372,7 @@ export function EmailHtmlViewer({
             setTimeout(syncHeight, 1000);
           }}
           className="w-full border-0 rounded-lg transition-all"
-          style={{ height: iframeHeight, minHeight: '120px' }}
+          style={{ height: `${iframeHeight}px`, minHeight: '80px' }}
           title="Isi Pesan Email"
         />
       </div>
