@@ -8,26 +8,36 @@ type SenderItem struct {
 	Active    bool   `json:"active,omitempty"`
 }
 
+type EmailAttachment struct {
+	Name        string `json:"name"`
+	URL         string `json:"url"`
+	Size        int64  `json:"size"`
+	ContentType string `json:"content_type"`
+	ContentB64  string `json:"content_b64,omitempty"`
+}
+
 type SendEmailRequest struct {
-	SenderEmail  string `json:"sender_email"`
-	SenderName   string `json:"sender_name"`
-	ReplyToEmail string `json:"reply_to_email"`
-	ReplyToName  string `json:"reply_to_name"`
-	ToEmail      string `json:"to_email" binding:"required,email"`
-	ToName       string `json:"to_name"`
-	Cc           string `json:"cc"`
-	Bcc          string `json:"bcc"`
-	Subject      string `json:"subject" binding:"required,min=1,max=255"`
-	BodyHtml     string `json:"body_html" binding:"required,min=1"`
-	BodyText     string `json:"body_text"`
+	SenderEmail  string            `json:"sender_email"`
+	SenderName   string            `json:"sender_name"`
+	ReplyToEmail string            `json:"reply_to_email"`
+	ReplyToName  string            `json:"reply_to_name"`
+	ToEmail      string            `json:"to_email" binding:"required,email"`
+	ToName       string            `json:"to_name"`
+	Cc           string            `json:"cc"`
+	Bcc          string            `json:"bcc"`
+	Subject      string            `json:"subject" binding:"required,min=1,max=255"`
+	BodyHtml     string            `json:"body_html" binding:"required,min=1"`
+	BodyText     string            `json:"body_text"`
+	Attachments  []EmailAttachment `json:"attachments,omitempty"`
 }
 
 type ReplyEmailRequest struct {
-	ThreadID    uint   `json:"thread_id" binding:"required"`
-	SenderEmail string `json:"sender_email"`
-	SenderName  string `json:"sender_name"`
-	BodyHtml    string `json:"body_html" binding:"required,min=1"`
-	BodyText    string `json:"body_text"`
+	ThreadID    uint              `json:"thread_id" binding:"required"`
+	SenderEmail string            `json:"sender_email"`
+	SenderName  string            `json:"sender_name"`
+	BodyHtml    string            `json:"body_html" binding:"required,min=1"`
+	BodyText    string            `json:"body_text"`
+	Attachments []EmailAttachment `json:"attachments,omitempty"`
 }
 
 type UpdateEmailStatusRequest struct {

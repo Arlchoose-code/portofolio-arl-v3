@@ -148,22 +148,30 @@ func (ctrl *EmailWebhookController) HandleBrevoInbound(c *gin.Context) {
 			config.DB.Save(&thread)
 		}
 
+		var headersJson string
+		if item.Headers != nil {
+			if hBytes, err := json.Marshal(item.Headers); err == nil {
+				headersJson = string(hBytes)
+			}
+		}
+
 		emailMsg := models.EmailMessage{
-			ThreadID:  thread.ID,
-			Direction: "inbound",
-			FromEmail: fromEmail,
-			FromName:  fromName,
-			ToEmail:   toEmail,
-			ToName:    toName,
-			Subject:   subject,
-			BodyHtml:  bodyHtml,
-			BodyText:  bodyText,
-			MessageID: item.MessageId,
-			InReplyTo: item.InReplyTo,
-			Status:    "inbox",
-			IsRead:    false,
-			IsStarred: false,
-			IsTrash:   false,
+			ThreadID:    thread.ID,
+			Direction:   "inbound",
+			FromEmail:   fromEmail,
+			FromName:    fromName,
+			ToEmail:     toEmail,
+			ToName:      toName,
+			Subject:     subject,
+			BodyHtml:    bodyHtml,
+			BodyText:    bodyText,
+			MessageID:   item.MessageId,
+			InReplyTo:   item.InReplyTo,
+			HeadersJSON: headersJson,
+			Status:      "inbox",
+			IsRead:      false,
+			IsStarred:   false,
+			IsTrash:     false,
 		}
 		config.DB.Create(&emailMsg)
 		processedCount++
@@ -303,22 +311,30 @@ func (ctrl *EmailWebhookController) HandleResendInbound(c *gin.Context) {
 		msgID = payload.Data.EmailID
 	}
 
+	var headersJson string
+	if payload.Data.Headers != nil {
+		if hBytes, err := json.Marshal(payload.Data.Headers); err == nil {
+			headersJson = string(hBytes)
+		}
+	}
+
 	emailMsg := models.EmailMessage{
-		ThreadID:  thread.ID,
-		Direction: "inbound",
-		FromEmail: fromEmail,
-		FromName:  fromName,
-		ToEmail:   toEmail,
-		ToName:    "Syahril Haryono",
-		Subject:   subject,
-		BodyHtml:  bodyHtml,
-		BodyText:  bodyText,
-		MessageID: msgID,
-		InReplyTo: inReplyTo,
-		Status:    "inbox",
-		IsRead:    false,
-		IsStarred: false,
-		IsTrash:   false,
+		ThreadID:    thread.ID,
+		Direction:   "inbound",
+		FromEmail:   fromEmail,
+		FromName:    fromName,
+		ToEmail:     toEmail,
+		ToName:      "Syahril Haryono",
+		Subject:     subject,
+		BodyHtml:    bodyHtml,
+		BodyText:    bodyText,
+		MessageID:   msgID,
+		InReplyTo:   inReplyTo,
+		HeadersJSON: headersJson,
+		Status:      "inbox",
+		IsRead:      false,
+		IsStarred:   false,
+		IsTrash:     false,
 	}
 	config.DB.Create(&emailMsg)
 

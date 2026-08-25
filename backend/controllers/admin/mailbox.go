@@ -1,11 +1,14 @@
 package admin
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"html"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -153,8 +156,15 @@ func (ctrl *MailboxController) SendEmail(c *gin.Context) {
 		replyToName = setting.ReplyToName
 	}
 
+	var attachmentsJson string
+	if len(req.Attachments) > 0 {
+		if b, err := json.Marshal(req.Attachments); err == nil {
+			attachmentsJson = string(b)
+		}
+	}
+
 	// Send via Brevo / Resend / Hybrid
-	msgID, err := services.Email.SendTransactionalEmailWithSender(
+	msgID, err := services.Email.SendTransactionalEmailWithSenderAndAttachments(
 		c.Request.Context(),
 		&setting,
 		senderEmail,
@@ -169,6 +179,7 @@ func (ctrl *MailboxController) SendEmail(c *gin.Context) {
 		replyToEmail,
 		replyToName,
 		"",
+		req.Attachments,
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, structs.ErrorResponse(fmt.Sprintf("Gagal mengirim email: %v", err)))
@@ -193,22 +204,23 @@ func (ctrl *MailboxController) SendEmail(c *gin.Context) {
 	config.DB.Create(&thread)
 
 	emailMsg := models.EmailMessage{
-		ThreadID:  thread.ID,
-		Direction: "outbound",
-		FromEmail: senderEmail,
-		FromName:  senderName,
-		ToEmail:   toEmail,
-		ToName:    toName,
-		Cc:        req.Cc,
-		Bcc:       req.Bcc,
-		Subject:   subject,
-		BodyHtml:  bodyHtml,
-		BodyText:  bodyText,
-		MessageID: msgID,
-		Status:    "sent",
-		IsRead:    true,
-		IsStarred: false,
-		IsTrash:   false,
+		ThreadID:        thread.ID,
+		Direction:       "outbound",
+		FromEmail:       senderEmail,
+		FromName:        senderName,
+		ToEmail:         toEmail,
+		ToName:          toName,
+		Cc:              req.Cc,
+		Bcc:             req.Bcc,
+		Subject:         subject,
+		BodyHtml:        bodyHtml,
+		BodyText:        bodyText,
+		MessageID:       msgID,
+		AttachmentsJSON: attachmentsJson,
+		Status:          "sent",
+		IsRead:          true,
+		IsStarred:       false,
+		IsTrash:         false,
 	}
 	config.DB.Create(&emailMsg)
 
@@ -262,6 +274,13 @@ func (ctrl *MailboxController) ReplyEmail(c *gin.Context) {
 		bodyHtml = fmt.Sprintf(`<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #1a1a1a;">%s</div>`, formatted)
 	}
 
+	// Format outgoing HTML with Gmail-style quoted reply block
+	outgoingHtml := bodyHtml
+	if lastMsg.BodyHtml != "" {
+		dateStr := lastMsg.CreatedAt.Format("Mon, 02 Jan 2006 15:04")
+		outgoingHtml = services.Email.FormatGmailQuotedReply(bodyHtml, lastMsg.BodyHtml, dateStr, lastMsg.FromName, lastMsg.FromEmail)
+	}
+
 	// Determine Sender & Reply-To
 	senderEmail := strings.TrimSpace(req.SenderEmail)
 	senderName := strings.TrimSpace(req.SenderName)
@@ -281,7 +300,14 @@ func (ctrl *MailboxController) ReplyEmail(c *gin.Context) {
 	replyToEmail := setting.ReplyToEmail
 	replyToName := setting.ReplyToName
 
-	msgID, err := services.Email.SendTransactionalEmailWithSender(
+	var attachmentsJson string
+	if len(req.Attachments) > 0 {
+		if b, err := json.Marshal(req.Attachments); err == nil {
+			attachmentsJson = string(b)
+		}
+	}
+
+	msgID, err := services.Email.SendTransactionalEmailWithSenderAndAttachments(
 		c.Request.Context(),
 		&setting,
 		senderEmail,
@@ -291,11 +317,12 @@ func (ctrl *MailboxController) ReplyEmail(c *gin.Context) {
 		"",
 		"",
 		replySubject,
-		bodyHtml,
+		outgoingHtml,
 		bodyText,
 		replyToEmail,
 		replyToName,
 		lastMsg.MessageID,
+		req.Attachments,
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, structs.ErrorResponse(fmt.Sprintf("Gagal mengirim balasan: %v", err)))
@@ -316,21 +343,22 @@ func (ctrl *MailboxController) ReplyEmail(c *gin.Context) {
 	config.DB.Save(&thread)
 
 	emailMsg := models.EmailMessage{
-		ThreadID:  thread.ID,
-		Direction: "outbound",
-		FromEmail: senderEmail,
-		FromName:  senderName,
-		ToEmail:   toEmail,
-		ToName:    toName,
-		Subject:   replySubject,
-		BodyHtml:  bodyHtml,
-		BodyText:  bodyText,
-		MessageID: msgID,
-		InReplyTo: lastMsg.MessageID,
-		Status:    "sent",
-		IsRead:    true,
-		IsStarred: false,
-		IsTrash:   false,
+		ThreadID:        thread.ID,
+		Direction:       "outbound",
+		FromEmail:       senderEmail,
+		FromName:        senderName,
+		ToEmail:         toEmail,
+		ToName:          toName,
+		Subject:         replySubject,
+		BodyHtml:        bodyHtml,
+		BodyText:        bodyText,
+		MessageID:       msgID,
+		InReplyTo:       lastMsg.MessageID,
+		AttachmentsJSON: attachmentsJson,
+		Status:          "sent",
+		IsRead:          true,
+		IsStarred:       false,
+		IsTrash:         false,
 	}
 	config.DB.Create(&emailMsg)
 
@@ -338,6 +366,53 @@ func (ctrl *MailboxController) ReplyEmail(c *gin.Context) {
 		"thread_id":  thread.ID,
 		"message_id": msgID,
 		"sender":     senderEmail,
+	}))
+}
+
+func (ctrl *MailboxController) UploadAttachment(c *gin.Context) {
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, structs.ErrorResponse("File lampiran tidak ditemukan"))
+		return
+	}
+
+	// Max 15MB limit
+	if file.Size > 15*1024*1024 {
+		c.JSON(http.StatusBadRequest, structs.ErrorResponse("Ukuran file maksimal 15MB"))
+		return
+	}
+
+	uploadDir := "./storage/media/attachments"
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, structs.ErrorResponse("Gagal membuat direktori upload"))
+		return
+	}
+
+	uniqueName := fmt.Sprintf("att_%d_%s", time.Now().UnixNano(), filepath.Base(file.Filename))
+	destPath := filepath.Join(uploadDir, uniqueName)
+
+	if err := c.SaveUploadedFile(file, destPath); err != nil {
+		c.JSON(http.StatusInternalServerError, structs.ErrorResponse("Gagal menyimpan file lampiran"))
+		return
+	}
+
+	fileBytes, err := os.ReadFile(destPath)
+	var b64Content string
+	if err == nil {
+		b64Content = base64.StdEncoding.EncodeToString(fileBytes)
+	}
+
+	contentType := file.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	c.JSON(http.StatusOK, structs.SuccessResponse("File lampiran berhasil diunggah", structs.EmailAttachment{
+		Name:        file.Filename,
+		URL:         fmt.Sprintf("/storage/media/attachments/%s", uniqueName),
+		Size:        file.Size,
+		ContentType: contentType,
+		ContentB64:  b64Content,
 	}))
 }
 

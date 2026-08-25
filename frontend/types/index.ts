@@ -284,6 +284,14 @@ export interface EmailThread {
   updated_at?: string;
 }
 
+export interface EmailAttachment {
+  name: string;
+  url: string;
+  size: number;
+  content_type?: string;
+  content_b64?: string;
+}
+
 export interface EmailMessage {
   id: number;
   thread_id: number;
@@ -299,6 +307,10 @@ export interface EmailMessage {
   body_text?: string;
   message_id?: string;
   in_reply_to?: string;
+  attachments_json?: string;
+  attachments?: EmailAttachment[];
+  headers_json?: string;
+  headers?: Record<string, string>;
   status: 'inbox' | 'sent' | 'draft' | 'trash';
   is_read: boolean;
   is_starred: boolean;

@@ -169,7 +169,7 @@ export const usersApi = {
   delete: (id: number) => client.delete(`admin/users/${id}`),
 };
 
-// Webmail & Mailbox (Brevo)
+// Webmail & Mailbox (Brevo / Resend)
 export const mailboxApi = {
   listThreads: (params?: PaginationParams & { folder?: string; account?: string }) =>
     client.getPaginated<EmailThread>('admin/mailbox/threads', params),
@@ -186,6 +186,7 @@ export const mailboxApi = {
     subject: string;
     body_html: string;
     body_text?: string;
+    attachments?: import('@/types').EmailAttachment[];
   }) => client.post<{ thread_id: number; message_id: string; sender?: string }>('admin/mailbox/send', data),
   reply: (data: {
     thread_id: number;
@@ -193,7 +194,13 @@ export const mailboxApi = {
     sender_name?: string;
     body_html: string;
     body_text?: string;
+    attachments?: import('@/types').EmailAttachment[];
   }) => client.post<{ thread_id: number; message_id: string; sender?: string }>('admin/mailbox/reply', data),
+  uploadAttachment: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return client.post<import('@/types').EmailAttachment>('admin/mailbox/attachments', formData);
+  },
   updateStatus: (id: number, data: { is_read?: boolean; is_starred?: boolean; is_trash?: boolean }) =>
     client.put<EmailThread>(`admin/mailbox/threads/${id}/status`, data),
   deleteThread: (id: number) => client.delete(`admin/mailbox/threads/${id}`),

@@ -35,16 +35,23 @@ type BrevoSender struct {
 	Name  string `json:"name,omitempty"`
 }
 
+type BrevoAttachmentItem struct {
+	URL     string `json:"url,omitempty"`
+	Content string `json:"content,omitempty"` // base64
+	Name    string `json:"name"`
+}
+
 type BrevoSendEmailRequest struct {
-	Sender      BrevoSender       `json:"sender"`
-	To          []BrevoRecipient  `json:"to"`
-	Cc          []BrevoRecipient  `json:"cc,omitempty"`
-	Bcc         []BrevoRecipient  `json:"bcc,omitempty"`
-	ReplyTo     *BrevoSender      `json:"replyTo,omitempty"`
-	Subject     string            `json:"subject"`
-	HtmlContent string            `json:"htmlContent"`
-	TextContent string            `json:"textContent,omitempty"`
-	Headers     map[string]string `json:"headers,omitempty"`
+	Sender      BrevoSender           `json:"sender"`
+	To          []BrevoRecipient      `json:"to"`
+	Cc          []BrevoRecipient      `json:"cc,omitempty"`
+	Bcc         []BrevoRecipient      `json:"bcc,omitempty"`
+	ReplyTo     *BrevoSender          `json:"replyTo,omitempty"`
+	Subject     string                `json:"subject"`
+	HtmlContent string                `json:"htmlContent"`
+	TextContent string                `json:"textContent,omitempty"`
+	Attachment  []BrevoAttachmentItem `json:"attachment,omitempty"`
+	Headers     map[string]string     `json:"headers,omitempty"`
 }
 
 type BrevoSendEmailResponse struct {
@@ -53,16 +60,23 @@ type BrevoSendEmailResponse struct {
 	Message   string `json:"message,omitempty"`
 }
 
+type ResendAttachmentItem struct {
+	Content  string `json:"content,omitempty"`
+	Filename string `json:"filename"`
+	Path     string `json:"path,omitempty"`
+}
+
 type ResendSendEmailRequest struct {
-	From        string            `json:"from"`
-	To          []string          `json:"to"`
-	Cc          []string          `json:"cc,omitempty"`
-	Bcc         []string          `json:"bcc,omitempty"`
-	ReplyTo     string            `json:"reply_to,omitempty"`
-	Subject     string            `json:"subject"`
-	Html        string            `json:"html"`
-	Text        string            `json:"text,omitempty"`
-	Headers     map[string]string `json:"headers,omitempty"`
+	From        string                 `json:"from"`
+	To          []string               `json:"to"`
+	Cc          []string               `json:"cc,omitempty"`
+	Bcc         []string               `json:"bcc,omitempty"`
+	ReplyTo     string                 `json:"reply_to,omitempty"`
+	Subject     string                 `json:"subject"`
+	Html        string                 `json:"html"`
+	Text        string                 `json:"text,omitempty"`
+	Attachments []ResendAttachmentItem `json:"attachments,omitempty"`
+	Headers     map[string]string      `json:"headers,omitempty"`
 }
 
 type ResendSendEmailResponse struct {
@@ -71,10 +85,20 @@ type ResendSendEmailResponse struct {
 	Message string `json:"message,omitempty"`
 }
 
+// FormatGmailQuotedReply formats an HTML reply with standard Gmail-style quoted block and header
+func (s *EmailService) FormatGmailQuotedReply(replyHtml, originalHtml, originalDateStr, originalFromName, originalFromEmail string) string {
+	if strings.TrimSpace(originalHtml) == "" {
+		return replyHtml
+	}
+	header := fmt.Sprintf("Pada %s %s &lt;%s&gt; menulis:", originalDateStr, originalFromName, originalFromEmail)
+	return fmt.Sprintf(`<div>%s</div><br><div class="gmail_quote"><div dir="ltr" class="gmail_attr">%s</div><blockquote class="gmail_quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid #ccc;padding-left:1ex">%s</blockquote></div>`, replyHtml, header, originalHtml)
+}
+
 // SendViaBrevo sends email via Brevo REST API v3
 func (s *EmailService) SendViaBrevo(
 	ctx context.Context,
 	apiKey, fromEmail, fromName, toEmail, toName, cc, bcc, subject, htmlBody, textBody, replyToEmail, replyToName, inReplyToMsgId string,
+	attachments []structs.EmailAttachment,
 ) (string, error) {
 	reqPayload := BrevoSendEmailRequest{
 		Sender: BrevoSender{
@@ -90,6 +114,20 @@ func (s *EmailService) SendViaBrevo(
 		Subject:     subject,
 		HtmlContent: htmlBody,
 		TextContent: textBody,
+	}
+
+	for _, att := range attachments {
+		if att.ContentB64 != "" {
+			reqPayload.Attachment = append(reqPayload.Attachment, BrevoAttachmentItem{
+				Name:    att.Name,
+				Content: att.ContentB64,
+			})
+		} else if att.URL != "" {
+			reqPayload.Attachment = append(reqPayload.Attachment, BrevoAttachmentItem{
+				Name: att.Name,
+				URL:  att.URL,
+			})
+		}
 	}
 
 	if cc != "" {
@@ -173,6 +211,7 @@ func (s *EmailService) SendViaBrevo(
 func (s *EmailService) SendViaResend(
 	ctx context.Context,
 	apiKey, fromEmail, fromName, toEmail, toName, cc, bcc, subject, htmlBody, textBody, replyToEmail, inReplyToMsgId string,
+	attachments []structs.EmailAttachment,
 ) (string, error) {
 	fromFormatted := fmt.Sprintf("%s <%s>", fromName, fromEmail)
 	if fromName == "" {
@@ -185,6 +224,20 @@ func (s *EmailService) SendViaResend(
 		Subject: subject,
 		Html:    htmlBody,
 		Text:    textBody,
+	}
+
+	for _, att := range attachments {
+		if att.ContentB64 != "" {
+			reqPayload.Attachments = append(reqPayload.Attachments, ResendAttachmentItem{
+				Filename: att.Name,
+				Content:  att.ContentB64,
+			})
+		} else if att.URL != "" {
+			reqPayload.Attachments = append(reqPayload.Attachments, ResendAttachmentItem{
+				Filename: att.Name,
+				Path:     att.URL,
+			})
+		}
 	}
 
 	if cc != "" {
@@ -451,6 +504,34 @@ func (s *EmailService) SendTransactionalEmailWithSender(
 	toEmail, toName, cc, bcc, subject, htmlBody, textBody, replyToEmail, replyToName string,
 	inReplyToMsgId string,
 ) (string, error) {
+	return s.SendTransactionalEmailWithSenderAndAttachments(
+		ctx,
+		setting,
+		customSenderEmail,
+		customSenderName,
+		toEmail,
+		toName,
+		cc,
+		bcc,
+		subject,
+		htmlBody,
+		textBody,
+		replyToEmail,
+		replyToName,
+		inReplyToMsgId,
+		nil,
+	)
+}
+
+// SendTransactionalEmailWithSenderAndAttachments allows explicit sender overrides and attachments
+func (s *EmailService) SendTransactionalEmailWithSenderAndAttachments(
+	ctx context.Context,
+	setting *models.EmailSetting,
+	customSenderEmail, customSenderName string,
+	toEmail, toName, cc, bcc, subject, htmlBody, textBody, replyToEmail, replyToName string,
+	inReplyToMsgId string,
+	attachments []structs.EmailAttachment,
+) (string, error) {
 	senderEmail := "contact@arlab.my.id"
 	senderName := "Syahril Haryono"
 	provider := "hybrid"
@@ -481,35 +562,35 @@ func (s *EmailService) SendTransactionalEmailWithSender(
 	// Dev simulation if no keys configured
 	if brevoKey == "" && resendKey == "" {
 		simulatedID := fmt.Sprintf("<simulated-%d@portfolio.local>", time.Now().UnixNano())
-		log.Printf("[EmailService DEV SIMULATION] From: %s <%s>, To: %s, Subject: %s (No Email API Key configured)\n", senderName, senderEmail, toEmail, subject)
+		log.Printf("[EmailService DEV SIMULATION] From: %s <%s>, To: %s, Subject: %s (No Email API Key configured, Attachments: %d)\n", senderName, senderEmail, toEmail, subject, len(attachments))
 		return simulatedID, nil
 	}
 
 	// Resend Only
 	if provider == "resend" && resendKey != "" {
-		return s.SendViaResend(ctx, resendKey, senderEmail, senderName, toEmail, toName, cc, bcc, subject, htmlBody, textBody, replyToEmail, inReplyToMsgId)
+		return s.SendViaResend(ctx, resendKey, senderEmail, senderName, toEmail, toName, cc, bcc, subject, htmlBody, textBody, replyToEmail, inReplyToMsgId, attachments)
 	}
 
 	// Brevo Only
 	if provider == "brevo" && brevoKey != "" {
-		return s.SendViaBrevo(ctx, brevoKey, senderEmail, senderName, toEmail, toName, cc, bcc, subject, htmlBody, textBody, replyToEmail, replyToName, inReplyToMsgId)
+		return s.SendViaBrevo(ctx, brevoKey, senderEmail, senderName, toEmail, toName, cc, bcc, subject, htmlBody, textBody, replyToEmail, replyToName, inReplyToMsgId, attachments)
 	}
 
 	// Hybrid Mode: Try Brevo first (300/day limit), then fallback to Resend (100/day limit)
 	if brevoKey != "" {
-		msgID, err := s.SendViaBrevo(ctx, brevoKey, senderEmail, senderName, toEmail, toName, cc, bcc, subject, htmlBody, textBody, replyToEmail, replyToName, inReplyToMsgId)
+		msgID, err := s.SendViaBrevo(ctx, brevoKey, senderEmail, senderName, toEmail, toName, cc, bcc, subject, htmlBody, textBody, replyToEmail, replyToName, inReplyToMsgId, attachments)
 		if err == nil {
 			return msgID, nil
 		}
 		log.Printf("[Hybrid Email Warning] Brevo failed (%v), attempting Resend fallback...\n", err)
 		if resendKey != "" {
-			return s.SendViaResend(ctx, resendKey, senderEmail, senderName, toEmail, toName, cc, bcc, subject, htmlBody, textBody, replyToEmail, inReplyToMsgId)
+			return s.SendViaResend(ctx, resendKey, senderEmail, senderName, toEmail, toName, cc, bcc, subject, htmlBody, textBody, replyToEmail, inReplyToMsgId, attachments)
 		}
 		return "", err
 	}
 
 	if resendKey != "" {
-		return s.SendViaResend(ctx, resendKey, senderEmail, senderName, toEmail, toName, cc, bcc, subject, htmlBody, textBody, replyToEmail, inReplyToMsgId)
+		return s.SendViaResend(ctx, resendKey, senderEmail, senderName, toEmail, toName, cc, bcc, subject, htmlBody, textBody, replyToEmail, inReplyToMsgId, attachments)
 	}
 
 	return "", fmt.Errorf("tidak ada provider email yang aktif atau terkonfigurasi")

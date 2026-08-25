@@ -47,14 +47,16 @@ type EmailMessage struct {
 	Subject     string    `gorm:"size:255;not null" json:"subject"`
 	BodyHtml    string    `gorm:"type:longtext" json:"body_html"`
 	BodyText    string    `gorm:"type:longtext" json:"body_text"`
-	MessageID   string    `gorm:"size:255;index" json:"message_id,omitempty"`
-	InReplyTo   string    `gorm:"size:255;index" json:"in_reply_to,omitempty"`
-	Status      string    `gorm:"size:50;default:'inbox';index" json:"status"` // 'inbox', 'sent', 'draft', 'trash'
-	IsRead      bool      `gorm:"default:false;index" json:"is_read"`
-	IsStarred   bool      `gorm:"default:false;index" json:"is_starred"`
-	IsTrash     bool      `gorm:"default:false;index" json:"is_trash"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	MessageID       string    `gorm:"size:255;index" json:"message_id,omitempty"`
+	InReplyTo       string    `gorm:"size:255;index" json:"in_reply_to,omitempty"`
+	AttachmentsJSON string    `gorm:"type:text" json:"attachments_json,omitempty"`
+	HeadersJSON     string    `gorm:"type:text" json:"headers_json,omitempty"`
+	Status          string    `gorm:"size:50;default:'inbox';index" json:"status"` // 'inbox', 'sent', 'draft', 'trash'
+	IsRead          bool      `gorm:"default:false;index" json:"is_read"`
+	IsStarred       bool      `gorm:"default:false;index" json:"is_starred"`
+	IsTrash         bool      `gorm:"default:false;index" json:"is_trash"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 type PasswordResetToken struct {

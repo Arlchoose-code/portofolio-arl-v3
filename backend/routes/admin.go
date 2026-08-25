@@ -145,11 +145,12 @@ func RegisterAdminRoutes(r *gin.RouterGroup, cfg *config.Config) {
 		adminProtected.PUT("/users/:id", userCtrl.UpdateUser)
 		adminProtected.DELETE("/users/:id", userCtrl.DeleteUser)
 
-		// Webmail & Mailbox (Brevo)
+		// Webmail & Mailbox (Brevo / Resend)
 		adminProtected.GET("/mailbox/threads", mailboxCtrl.ListEmails)
 		adminProtected.GET("/mailbox/threads/:id", mailboxCtrl.GetThread)
 		adminProtected.POST("/mailbox/send", mailboxCtrl.SendEmail)
 		adminProtected.POST("/mailbox/reply", mailboxCtrl.ReplyEmail)
+		adminProtected.POST("/mailbox/attachments", mailboxCtrl.UploadAttachment)
 		adminProtected.PUT("/mailbox/threads/:id/status", mailboxCtrl.UpdateThreadStatus)
 		adminProtected.DELETE("/mailbox/threads/:id", mailboxCtrl.DeleteThread)
 		adminProtected.GET("/mailbox/stats", mailboxCtrl.GetMailboxStats)
