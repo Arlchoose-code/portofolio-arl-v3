@@ -172,16 +172,16 @@ export function EmailHtmlViewer({
   ${contentToDisplay || '<p style="color: #94a3b8; font-style: italic;">(Isi email kosong)</p>'}
   <script>
     function updateHeight() {
-      const body = document.body;
-      const html = document.documentElement;
-      const height = Math.max(
+      var body = document.body;
+      var html = document.documentElement;
+      var height = Math.max(
         body ? body.scrollHeight : 0,
         body ? body.offsetHeight : 0,
         html ? html.scrollHeight : 0,
         html ? html.offsetHeight : 0
       );
       if (height > 0) {
-        window.parent.postMessage({ type: 'SET_IFRAME_HEIGHT', height: height + 25 }, '*');
+        window.parent.postMessage({ type: 'SET_IFRAME_HEIGHT', height: height + 40 }, '*');
       }
     }
     window.addEventListener('load', updateHeight);
@@ -189,18 +189,49 @@ export function EmailHtmlViewer({
     if (window.ResizeObserver && document.body) {
       new ResizeObserver(updateHeight).observe(document.body);
     }
+    var imgs = document.querySelectorAll('img');
+    for (var i = 0; i < imgs.length; i++) {
+      if (imgs[i].complete) {
+        updateHeight();
+      } else {
+        imgs[i].addEventListener('load', updateHeight);
+      }
+    }
     if (document.readyState === 'complete') updateHeight();
-    setTimeout(updateHeight, 100);
-    setTimeout(updateHeight, 400);
-    setTimeout(updateHeight, 1200);
+    setTimeout(updateHeight, 50);
+    setTimeout(updateHeight, 200);
+    setTimeout(updateHeight, 600);
+    setTimeout(updateHeight, 1500);
   </script>
 </body>
 </html>`;
 
+  const handleIframeLoad = () => {
+    if (iframeRef.current) {
+      try {
+        const doc = iframeRef.current.contentDocument || iframeRef.current.contentWindow?.document;
+        if (doc) {
+          const body = doc.body;
+          const html = doc.documentElement;
+          const height = Math.max(
+            body ? body.scrollHeight : 0,
+            body ? body.offsetHeight : 0,
+            html ? html.scrollHeight : 0,
+            html ? html.offsetHeight : 0,
+            80
+          );
+          if (height > 0) {
+            setIframeHeight(`${height + 35}px`);
+          }
+        }
+      } catch {}
+    }
+  };
+
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
       if (e.data && e.data.type === 'SET_IFRAME_HEIGHT' && typeof e.data.height === 'number') {
-        setIframeHeight(`${e.data.height}px`);
+        setIframeHeight(`${Math.max(e.data.height, 80)}px`);
       }
     };
     window.addEventListener('message', handleMessage);
@@ -276,10 +307,11 @@ export function EmailHtmlViewer({
         <iframe
           ref={iframeRef}
           srcDoc={sandboxedSrcDoc}
-          sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+          onLoad={handleIframeLoad}
           scrolling="no"
           className="w-full border-0 rounded-lg transition-all overflow-hidden"
-          style={{ height: iframeHeight, minHeight: '60px' }}
+          style={{ height: iframeHeight, minHeight: '80px' }}
           title="Isi Pesan Email"
         />
       </div>
