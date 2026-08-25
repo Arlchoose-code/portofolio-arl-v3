@@ -35,7 +35,7 @@ func (ctrl *MailboxController) ListEmails(c *gin.Context) {
 
 	// Filter by specific account if provided and not "all"
 	if account != "" && account != "all" {
-		query = query.Where("id IN (SELECT DISTINCT thread_id FROM email_messages WHERE LOWER(to_email) = ? OR LOWER(from_email) = ?)", account, account)
+		query = query.Where("id IN (SELECT DISTINCT thread_id FROM email_messages WHERE LOWER(to_email) LIKE ? OR LOWER(from_email) LIKE ?)", "%"+account+"%", "%"+account+"%")
 	}
 
 	switch folder {
@@ -501,11 +501,11 @@ func (ctrl *MailboxController) GetMailboxStats(c *gin.Context) {
 	trashQ := config.DB.Model(&models.EmailThread{}).Where("is_trash = true")
 
 	if account != "" && account != "all" {
-		inboxQ = inboxQ.Where("id IN (SELECT DISTINCT thread_id FROM email_messages WHERE LOWER(to_email) = ? OR LOWER(from_email) = ?)", account, account)
-		unreadQ = unreadQ.Where("id IN (SELECT DISTINCT thread_id FROM email_messages WHERE LOWER(to_email) = ? OR LOWER(from_email) = ?)", account, account)
-		sentQ = sentQ.Where("LOWER(from_email) = ?", account)
-		starredQ = starredQ.Where("id IN (SELECT DISTINCT thread_id FROM email_messages WHERE LOWER(to_email) = ? OR LOWER(from_email) = ?)", account, account)
-		trashQ = trashQ.Where("id IN (SELECT DISTINCT thread_id FROM email_messages WHERE LOWER(to_email) = ? OR LOWER(from_email) = ?)", account, account)
+		inboxQ = inboxQ.Where("id IN (SELECT DISTINCT thread_id FROM email_messages WHERE LOWER(to_email) LIKE ? OR LOWER(from_email) LIKE ?)", "%"+account+"%", "%"+account+"%")
+		unreadQ = unreadQ.Where("id IN (SELECT DISTINCT thread_id FROM email_messages WHERE LOWER(to_email) LIKE ? OR LOWER(from_email) LIKE ?)", "%"+account+"%", "%"+account+"%")
+		sentQ = sentQ.Where("LOWER(from_email) LIKE ?", "%"+account+"%")
+		starredQ = starredQ.Where("id IN (SELECT DISTINCT thread_id FROM email_messages WHERE LOWER(to_email) LIKE ? OR LOWER(from_email) LIKE ?)", "%"+account+"%", "%"+account+"%")
+		trashQ = trashQ.Where("id IN (SELECT DISTINCT thread_id FROM email_messages WHERE LOWER(to_email) LIKE ? OR LOWER(from_email) LIKE ?)", "%"+account+"%", "%"+account+"%")
 	}
 
 	inboxQ.Count(&inboxCount)

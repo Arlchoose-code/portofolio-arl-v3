@@ -240,6 +240,9 @@ function AdminMailboxContent() {
     }, 400);
   };
 
+  const reqIdRef = React.useRef(0);
+  const prevUnreadCountRef = React.useRef<number | null>(null);
+
   const fetchStats = useCallback(async () => {
     try {
       const res = await mailboxApi.getStats(selectedAccount);
@@ -249,8 +252,10 @@ function AdminMailboxContent() {
     } catch {}
   }, [selectedAccount]);
 
-  const fetchThreads = async () => {
-    setLoading(true);
+  const fetchThreads = useCallback(async (isSilent = false) => {
+    const reqId = ++reqIdRef.current;
+    if (!isSilent) setLoading(true);
+
     try {
       const res = await mailboxApi.listThreads({
         folder,
@@ -260,6 +265,8 @@ function AdminMailboxContent() {
         search: search.trim() || undefined,
       });
 
+      if (reqId !== reqIdRef.current) return;
+
       if (res.status && res.data) {
         setThreads(res.data);
         if (res.meta) {
@@ -268,11 +275,15 @@ function AdminMailboxContent() {
         }
       }
     } catch {
-      toast.error('Gagal memuat daftar email.');
+      if (reqId === reqIdRef.current && !isSilent) {
+        toast.error('Gagal memuat daftar email.');
+      }
     } finally {
-      setLoading(false);
+      if (reqId === reqIdRef.current && !isSilent) {
+        setLoading(false);
+      }
     }
-  };
+  }, [folder, selectedAccount, page, search]);
 
   const fetchSettings = async () => {
     try {
@@ -312,10 +323,49 @@ function AdminMailboxContent() {
     } catch {}
   };
 
+  const handleSwitchAccount = (newAccount: string) => {
+    setSelectedAccount(newAccount);
+    setPage(1);
+    setSelectedThread(null);
+    setThreads([]);
+    setLoading(true);
+  };
+
   useEffect(() => {
     fetchThreads();
     fetchStats();
-  }, [folder, page, selectedAccount]);
+  }, [fetchThreads, fetchStats]);
+
+  // Realtime Inbound Auto-Polling every 10 seconds (silent background refresh)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchThreads(true);
+      fetchStats();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [fetchThreads, fetchStats]);
+
+  // Realtime on Window / Tab Focus
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchThreads(true);
+      fetchStats();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [fetchThreads, fetchStats]);
+
+  // Notify user when a new unread email arrives in the background
+  useEffect(() => {
+    if (
+      prevUnreadCountRef.current !== null &&
+      stats.unread_count > prevUnreadCountRef.current
+    ) {
+      toast.info(`📬 Email baru masuk! (${stats.unread_count} pesan belum dibaca)`);
+    }
+    prevUnreadCountRef.current = stats.unread_count;
+  }, [stats.unread_count]);
 
   useEffect(() => {
     fetchSettings();
@@ -737,11 +787,7 @@ function AdminMailboxContent() {
                 {/* All Inboxes Option */}
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedAccount('all');
-                    setPage(1);
-                    setSelectedThread(null);
-                  }}
+                  onClick={() => handleSwitchAccount('all')}
                   className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold transition-all ${
                     selectedAccount === 'all'
                       ? 'bg-lime-500/15 dark:bg-brand/15 text-lime-800 dark:text-brand border border-lime-500/30 dark:border-brand/30 shadow-xs'
@@ -763,11 +809,7 @@ function AdminMailboxContent() {
                     <button
                       key={idx}
                       type="button"
-                      onClick={() => {
-                        setSelectedAccount(acc.email);
-                        setPage(1);
-                        setSelectedThread(null);
-                      }}
+                      onClick={() => handleSwitchAccount(acc.email)}
                       className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition-all ${
                         isActive
                           ? 'bg-lime-500/15 dark:bg-brand/15 text-lime-800 dark:text-brand border border-lime-500/30 dark:border-brand/30 shadow-xs font-bold'
@@ -806,6 +848,8 @@ function AdminMailboxContent() {
                   setFolder('inbox');
                   setPage(1);
                   setSelectedThread(null);
+                  setThreads([]);
+                  setLoading(true);
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
                   folder === 'inbox'
@@ -836,6 +880,8 @@ function AdminMailboxContent() {
                   setFolder('starred');
                   setPage(1);
                   setSelectedThread(null);
+                  setThreads([]);
+                  setLoading(true);
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
                   folder === 'starred'
@@ -858,6 +904,8 @@ function AdminMailboxContent() {
                   setFolder('sent');
                   setPage(1);
                   setSelectedThread(null);
+                  setThreads([]);
+                  setLoading(true);
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
                   folder === 'sent'
@@ -880,6 +928,8 @@ function AdminMailboxContent() {
                   setFolder('trash');
                   setPage(1);
                   setSelectedThread(null);
+                  setThreads([]);
+                  setLoading(true);
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
                   folder === 'trash'
@@ -1342,7 +1392,7 @@ function AdminMailboxContent() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={fetchThreads}
+                    onClick={() => fetchThreads()}
                     className="h-9 px-3 text-xs gap-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                     title="Segarkan Kotak Masuk"
                   >
