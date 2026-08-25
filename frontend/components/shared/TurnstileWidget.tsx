@@ -117,7 +117,7 @@ export function TurnstileWidget({
   if (!effectiveSiteKey) return null;
 
   return (
-    <div className={`min-h-[65px] flex items-center justify-center my-2 ${className}`}>
+    <div className={`min-h-[65px] flex items-center justify-start my-2 ${className}`}>
       <div ref={containerRef} />
     </div>
   );
