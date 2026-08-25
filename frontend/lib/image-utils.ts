@@ -4,11 +4,13 @@
  */
 
 export async function ensureJpegIfHeic(file: File): Promise<File> {
+  if (typeof window === 'undefined' || typeof File === 'undefined' || !file) return file;
+
   const isHeic =
     file.type === 'image/heic' ||
     file.type === 'image/heif' ||
-    file.name.toLowerCase().endsWith('.heic') ||
-    file.name.toLowerCase().endsWith('.heif');
+    file.name?.toLowerCase().endsWith('.heic') ||
+    file.name?.toLowerCase().endsWith('.heif');
 
   if (!isHeic) return file;
 
