@@ -1,0 +1,69 @@
+# ==========================================
+# Portofolio Arl - Git Ignore Rules
+# ==========================================
+
+# Markdown files (User rule: do not upload md files)
+*.md
+*.MD
+*.markdown
+
+# Environment & Secret files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+*.env
+
+# Node.js & Next.js Frontend
+node_modules/
+.next/
+out/
+build/
+dist/
+.pnp
+.pnp.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+tsconfig.tsbuildinfo
+
+# Go Backend Binaries & Temp Build Artifacts
+backend/tmp/
+backend/portfolio-arl-backend.exe
+backend/portfolio-backend
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Media uploads (Exclude dynamic media files, keep directory structure)
+backend/storage/media/originals/*
+backend/storage/media/medium/*
+backend/storage/media/thumbnails/*
+!backend/storage/media/originals/.gitkeep
+!backend/storage/media/medium/.gitkeep
+!backend/storage/media/thumbnails/.gitkeep
+
+# Database SQL Dumps & Backups
+*.sql
+*.sql.gz
+*.dump
+*.sqlite
+*.sqlite3
+*.db
+
+# OS & Editor Artifacts
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+-s
+all_games.json

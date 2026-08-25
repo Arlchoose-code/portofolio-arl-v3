@@ -1,0 +1,168 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+  }
+
+  :root, html.dark, .dark {
+    /* === DARK MODE (default) === */
+    --bg-base: #0a0a0a;
+    --bg-surface: #111111;
+    --bg-elevated: #1a1a1a;
+    --bg-muted: #222222;
+    --bg-overlay: rgba(0, 0, 0, 0.7);
+
+    --text-primary: #f5f5f5;
+    --text-secondary: #a0a0a0;
+    --text-muted: #666666;
+    --text-inverse: #0a0a0a;
+
+    --accent: #ffffff;
+    --accent-soft: rgba(255, 255, 255, 0.06);
+    --accent-medium: rgba(255, 255, 255, 0.12);
+
+    --brand: #e8ff47;
+    --brand-text: #e8ff47;
+    --brand-neon: #e8ff47;
+    --brand-dim: rgba(232, 255, 71, 0.15);
+    --brand-glow: rgba(232, 255, 71, 0.4);
+
+    --border: rgba(255, 255, 255, 0.08);
+    --border-hover: rgba(255, 255, 255, 0.16);
+    --border-focus: rgba(255, 255, 255, 0.3);
+  }
+
+  html.light, html[data-theme="light"], .light {
+    /* === LIGHT MODE === */
+    --bg-base: #fafafa;
+    --bg-surface: #ffffff;
+    --bg-elevated: #f0f0f0;
+    --bg-muted: #e4e4e4;
+    --bg-overlay: rgba(0, 0, 0, 0.4);
+
+    --text-primary: #0a0a0a;
+    --text-secondary: #333333;
+    --text-muted: #666666;
+    --text-inverse: #ffffff;
+
+    --accent: #0a0a0a;
+    --accent-soft: rgba(0, 0, 0, 0.05);
+    --accent-medium: rgba(0, 0, 0, 0.1);
+
+    --brand: #2b5700;
+    --brand-text: #2b5700;
+    --brand-neon: #e8ff47;
+    --brand-dim: rgba(43, 87, 0, 0.14);
+    --brand-glow: rgba(43, 87, 0, 0.3);
+
+    --border: rgba(0, 0, 0, 0.12);
+    --border-hover: rgba(0, 0, 0, 0.24);
+    --border-focus: rgba(0, 0, 0, 0.4);
+  }
+
+  body {
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* Smooth theme transitions */
+  html,
+  body,
+  header,
+  aside,
+  main,
+  section,
+  nav,
+  article {
+    transition: background-color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* View Transition API animations for circular ripple */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
+
+  ::view-transition-old(root) {
+    z-index: 1;
+  }
+
+  ::view-transition-new(root) {
+    z-index: 9999;
+  }
+
+  /* Custom selection */
+  ::selection {
+    background-color: var(--brand);
+    color: #ffffff;
+  }
+
+  .dark ::selection {
+    background-color: var(--brand);
+    color: #0a0a0a;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--border-hover);
+  }
+}
+
+/* Conic gradient for featured card borders */
+@property --border-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0turn;
+}
+
+@keyframes spinAngle {
+  to {
+    --border-angle: 1turn;
+  }
+}
+
+.featured-glow-border {
+  --border-angle: 0turn;
+  animation: spinAngle 4s linear infinite;
+  background-image: conic-gradient(
+    from var(--border-angle),
+    transparent 70%,
+    rgba(232, 255, 71, 0.6) 95%,
+    transparent 100%
+  );
+}
+
+/* Hide scrollbar completely for horizontal category rails */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.no-scrollbar {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
+}
+
+
