@@ -146,8 +146,8 @@ export function EmailRichEditor({
     setLinkDialogOpen(true);
   };
 
-  const handleApplyLink = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleApplyLink = (e?: React.FormEvent | React.MouseEvent | React.KeyboardEvent) => {
+    e?.preventDefault();
     if (!editor) return;
 
     const trimmedUrl = linkUrl.trim();
@@ -177,7 +177,8 @@ export function EmailRichEditor({
     setLinkText('');
   };
 
-  const handleRemoveLink = () => {
+  const handleRemoveLink = (e?: React.MouseEvent) => {
+    e?.preventDefault();
     if (!editor) return;
     editor.chain().focus().extendMarkRange('link').unsetLink().run();
     setLinkDialogOpen(false);
@@ -504,7 +505,7 @@ export function EmailRichEditor({
               </button>
             </div>
 
-            <form onSubmit={handleApplyLink} className="space-y-3">
+            <div className="space-y-3">
               <div className="space-y-1">
                 <label className="text-[11px] font-semibold text-[var(--text-secondary)]">
                   Teks Tautan (Opsional)
@@ -514,6 +515,12 @@ export function EmailRichEditor({
                   placeholder="Contoh: Klik di sini"
                   value={linkText}
                   onChange={(e) => setLinkText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleApplyLink(e);
+                    }
+                  }}
                   className="text-xs h-8"
                 />
               </div>
@@ -527,6 +534,12 @@ export function EmailRichEditor({
                   placeholder="https://example.com"
                   value={linkUrl}
                   onChange={(e) => setLinkUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleApplyLink(e);
+                    }
+                  }}
                   required
                   autoFocus
                   className="text-xs h-8 font-mono"
@@ -557,7 +570,8 @@ export function EmailRichEditor({
                 </Button>
 
                 <Button
-                  type="submit"
+                  type="button"
+                  onClick={(e) => handleApplyLink(e)}
                   size="sm"
                   className="text-xs h-7 px-3 font-bold gap-1"
                 >
@@ -565,7 +579,7 @@ export function EmailRichEditor({
                   <span>Terapkan</span>
                 </Button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
