@@ -92,11 +92,12 @@ func (ctrl *MailboxController) GetThread(c *gin.Context) {
 	config.DB.Where("thread_id = ?", thread.ID).Order("id ASC").Find(&messages)
 	thread.Messages = messages
 
-	// Mark all messages in thread as read
-	if thread.HasUnread {
-		thread.HasUnread = false
-		config.DB.Save(&thread)
-		config.DB.Model(&models.EmailMessage{}).Where("thread_id = ? AND is_read = ?", thread.ID, false).Update("is_read", true)
+	// Unconditionally mark thread and all its messages as read in DB
+	config.DB.Model(&models.EmailThread{}).Where("id = ?", thread.ID).Update("has_unread", false)
+	config.DB.Model(&models.EmailMessage{}).Where("thread_id = ?", thread.ID).Update("is_read", true)
+	thread.HasUnread = false
+	for i := range thread.Messages {
+		thread.Messages[i].IsRead = true
 	}
 
 	c.JSON(http.StatusOK, structs.SuccessResponse("Thread retrieved", thread))

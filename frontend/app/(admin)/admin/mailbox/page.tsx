@@ -241,14 +241,24 @@ function AdminMailboxContent() {
   };
 
   const reqIdRef = React.useRef(0);
-  const isInitialStatsLoadedRef = React.useRef(false);
+  const initialStatsFetchedRef = React.useRef(false);
   const prevUnreadCountRef = React.useRef<number>(0);
 
   const fetchStats = useCallback(async () => {
     try {
       const res = await mailboxApi.getStats(selectedAccount);
       if (res.status && res.data) {
-        setStats(res.data);
+        const newStats = res.data;
+        if (initialStatsFetchedRef.current) {
+          if (newStats.unread_count > prevUnreadCountRef.current) {
+            const diff = newStats.unread_count - prevUnreadCountRef.current;
+            toast.info(`📬 ${diff} email baru masuk!`);
+          }
+        } else {
+          initialStatsFetchedRef.current = true;
+        }
+        prevUnreadCountRef.current = newStats.unread_count;
+        setStats(newStats);
       }
     } catch {}
   }, [selectedAccount]);
@@ -357,22 +367,6 @@ function AdminMailboxContent() {
     return () => window.removeEventListener('focus', handleFocus);
   }, [fetchThreads, fetchStats]);
 
-  // Notify user when a new unread email arrives in the background (only on real subsequent increase)
-  useEffect(() => {
-    if (!isInitialStatsLoadedRef.current) {
-      if (stats.unread_count !== undefined) {
-        prevUnreadCountRef.current = stats.unread_count;
-        isInitialStatsLoadedRef.current = true;
-      }
-      return;
-    }
-
-    if (stats.unread_count > prevUnreadCountRef.current) {
-      toast.info(`📬 Email baru masuk! (${stats.unread_count} pesan belum dibaca)`);
-    }
-    prevUnreadCountRef.current = stats.unread_count;
-  }, [stats.unread_count]);
-
   useEffect(() => {
     fetchSettings();
   }, []);
@@ -429,6 +423,7 @@ function AdminMailboxContent() {
           prev.map((item) => (item.id === t.id ? { ...item, has_unread: false } : item))
         );
         fetchStats();
+        window.dispatchEvent(new Event('contact-stats-updated'));
 
         // Auto-match reply sender to recipient of inbound message
         const msgs = res.data.messages || [];
@@ -724,16 +719,11 @@ function AdminMailboxContent() {
             <Mail className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg sm:text-xl font-bold tracking-tight text-[var(--text-primary)]">
-                Kotak Surat (Webmail)
-              </h1>
-              <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-lime-500/10 text-lime-700 dark:text-brand border border-lime-500/20">
-                Gmail-Style
-              </span>
-            </div>
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-[var(--text-primary)]">
+              Kotak Surat (Webmail)
+            </h1>
             <p className="text-xs text-[var(--text-muted)] hidden sm:block">
-              Kelola pesan masuk, kirim email, dan balas percakapan dengan tampilan penuh seperti Gmail.
+              Kelola pesan masuk, kirim email, dan balas percakapan langsung dari dashboard.
             </p>
           </div>
         </div>
