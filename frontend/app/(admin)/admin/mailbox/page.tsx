@@ -241,7 +241,8 @@ function AdminMailboxContent() {
   };
 
   const reqIdRef = React.useRef(0);
-  const prevUnreadCountRef = React.useRef<number | null>(null);
+  const isInitialStatsLoadedRef = React.useRef(false);
+  const prevUnreadCountRef = React.useRef<number>(0);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -356,12 +357,17 @@ function AdminMailboxContent() {
     return () => window.removeEventListener('focus', handleFocus);
   }, [fetchThreads, fetchStats]);
 
-  // Notify user when a new unread email arrives in the background
+  // Notify user when a new unread email arrives in the background (only on real subsequent increase)
   useEffect(() => {
-    if (
-      prevUnreadCountRef.current !== null &&
-      stats.unread_count > prevUnreadCountRef.current
-    ) {
+    if (!isInitialStatsLoadedRef.current) {
+      if (stats.unread_count !== undefined) {
+        prevUnreadCountRef.current = stats.unread_count;
+        isInitialStatsLoadedRef.current = true;
+      }
+      return;
+    }
+
+    if (stats.unread_count > prevUnreadCountRef.current) {
       toast.info(`📬 Email baru masuk! (${stats.unread_count} pesan belum dibaca)`);
     }
     prevUnreadCountRef.current = stats.unread_count;

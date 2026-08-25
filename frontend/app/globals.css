@@ -165,4 +165,24 @@
   scrollbar-width: none !important;  /* Firefox */
 }
 
+/* ========================================================================== */
+/* Prevent Mobile / iOS Safari Auto-Zoom on Form Inputs (16px minimum on mobile) */
+/* ========================================================================== */
+@media screen and (max-width: 768px) {
+  input,
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  textarea,
+  select,
+  .ProseMirror,
+  [contenteditable="true"] {
+    font-size: 16px !important;
+  }
+}
+
 

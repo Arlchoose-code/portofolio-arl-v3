@@ -169,39 +169,40 @@ export function EmailHtmlViewer({
   </style>
 </head>
 <body>
-  ${contentToDisplay || '<p style="color: #94a3b8; font-style: italic;">(Isi email kosong)</p>'}
+  <div id="email-content-wrapper" style="box-sizing: border-box; padding: 4px; margin: 0; min-height: 20px;">
+    ${contentToDisplay || '<p style="color: #94a3b8; font-style: italic;">(Isi email kosong)</p>'}
+  </div>
   <script>
-    function updateHeight() {
-      var body = document.body;
-      var html = document.documentElement;
-      var height = Math.max(
-        body ? body.scrollHeight : 0,
-        body ? body.offsetHeight : 0,
-        html ? html.scrollHeight : 0,
-        html ? html.offsetHeight : 0
-      );
-      if (height > 0) {
-        window.parent.postMessage({ type: 'SET_IFRAME_HEIGHT', height: height + 40 }, '*');
+    var lastSentHeight = 0;
+    function measureAndSendHeight() {
+      var el = document.getElementById('email-content-wrapper') || document.body;
+      if (!el) return;
+      var h = Math.ceil(el.getBoundingClientRect().height || el.scrollHeight);
+      if (h > 10 && Math.abs(h - lastSentHeight) > 6) {
+        lastSentHeight = h;
+        window.parent.postMessage({ type: 'SET_IFRAME_HEIGHT', height: h + 16 }, '*');
       }
     }
-    window.addEventListener('load', updateHeight);
-    window.addEventListener('resize', updateHeight);
-    if (window.ResizeObserver && document.body) {
-      new ResizeObserver(updateHeight).observe(document.body);
+    window.addEventListener('load', measureAndSendHeight);
+    window.addEventListener('resize', measureAndSendHeight);
+    if (window.ResizeObserver) {
+      var roTarget = document.getElementById('email-content-wrapper');
+      if (roTarget) {
+        new ResizeObserver(measureAndSendHeight).observe(roTarget);
+      }
     }
     var imgs = document.querySelectorAll('img');
     for (var i = 0; i < imgs.length; i++) {
       if (imgs[i].complete) {
-        updateHeight();
+        measureAndSendHeight();
       } else {
-        imgs[i].addEventListener('load', updateHeight);
+        imgs[i].addEventListener('load', measureAndSendHeight);
       }
     }
-    if (document.readyState === 'complete') updateHeight();
-    setTimeout(updateHeight, 50);
-    setTimeout(updateHeight, 200);
-    setTimeout(updateHeight, 600);
-    setTimeout(updateHeight, 1500);
+    measureAndSendHeight();
+    setTimeout(measureAndSendHeight, 100);
+    setTimeout(measureAndSendHeight, 400);
+    setTimeout(measureAndSendHeight, 1200);
   </script>
 </body>
 </html>`;
@@ -211,17 +212,10 @@ export function EmailHtmlViewer({
       try {
         const doc = iframeRef.current.contentDocument || iframeRef.current.contentWindow?.document;
         if (doc) {
-          const body = doc.body;
-          const html = doc.documentElement;
-          const height = Math.max(
-            body ? body.scrollHeight : 0,
-            body ? body.offsetHeight : 0,
-            html ? html.scrollHeight : 0,
-            html ? html.offsetHeight : 0,
-            80
-          );
-          if (height > 0) {
-            setIframeHeight(`${height + 35}px`);
+          const wrapper = doc.getElementById('email-content-wrapper') || doc.body;
+          const height = Math.ceil(wrapper.getBoundingClientRect().height || wrapper.scrollHeight);
+          if (height > 10) {
+            setIframeHeight(`${height + 20}px`);
           }
         }
       } catch {}
@@ -231,7 +225,8 @@ export function EmailHtmlViewer({
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
       if (e.data && e.data.type === 'SET_IFRAME_HEIGHT' && typeof e.data.height === 'number') {
-        setIframeHeight(`${Math.max(e.data.height, 80)}px`);
+        const nextH = Math.min(Math.max(e.data.height, 60), 10000);
+        setIframeHeight(`${nextH}px`);
       }
     };
     window.addEventListener('message', handleMessage);
