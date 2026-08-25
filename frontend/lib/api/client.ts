@@ -31,7 +31,26 @@ export class ApiClient {
         headers,
       });
 
-      const data = await res.json();
+      let data: any;
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        try {
+          data = await res.json();
+        } catch {
+          data = { status: false, message: `Gagal membaca respons server (HTTP ${res.status})`, data: null };
+        }
+      } else {
+        const text = await res.text();
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = {
+            status: res.ok,
+            message: res.ok ? 'Sukses' : `Permintaan gagal (HTTP ${res.status})`,
+            data: null,
+          };
+        }
+      }
 
       // Handle 401 Unauthorized with Automatic Silent Refresh
       const isAuthEndpoint =
@@ -50,7 +69,12 @@ export class ApiClient {
               credentials: 'include',
               headers: { 'Content-Type': 'application/json' },
             });
-            const refreshData = await refreshRes.json();
+            let refreshData: any;
+            try {
+              refreshData = await refreshRes.json();
+            } catch {
+              refreshData = { status: false };
+            }
             this.isRefreshing = false;
 
             if (refreshData.status) {
@@ -143,22 +167,7 @@ export class ApiClient {
   }
 
   async upload<T = any>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
-    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-    const url = `${this.basePath}/${cleanEndpoint}`;
-
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        body: formData,
-      });
-      return await res.json();
-    } catch (err: any) {
-      return {
-        status: false,
-        message: err?.message || 'Upload failed',
-        data: null as any,
-      };
-    }
+    return this.post<T>(endpoint, formData);
   }
 }
 

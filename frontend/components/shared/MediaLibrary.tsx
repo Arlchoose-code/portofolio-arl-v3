@@ -45,15 +45,20 @@ export function MediaLibrary({ open, onSelect, onClose }: MediaLibraryProps) {
 
     setUploading(true);
     const file = files[0];
-    const res = await mediaApi.upload(file);
-    setUploading(false);
-
-    if (res.status) {
-      toast.success('Media berhasil diunggah!');
-      await fetchMedia();
-      setTab('library');
-    } else {
-      toast.error(res.message || 'Gagal mengunggah media');
+    try {
+      const res = await mediaApi.upload(file);
+      if (res.status) {
+        toast.success('Media berhasil diunggah!');
+        await fetchMedia();
+        setTab('library');
+      } else {
+        toast.error(res.message || 'Gagal mengunggah media');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal mengunggah media');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
     }
   };
 
@@ -135,7 +140,7 @@ export function MediaLibrary({ open, onSelect, onClose }: MediaLibraryProps) {
                   </Button>
                   <input
                     type="file"
-                    accept="image/jpeg,image/png,image/webp"
+                    accept="image/*,image/jpeg,image/png,image/webp,image/gif"
                     onChange={handleFileUpload}
                     className="hidden"
                     disabled={uploading}
