@@ -33,6 +33,14 @@ const nextConfig: NextConfig = {
         source: '/storage/:path*',
         destination: `${backendOrigin}/storage/:path*`,
       },
+      {
+        source: '/api/public/:path*',
+        destination: `${backendOrigin}/api/public/:path*`,
+      },
+      {
+        source: '/api/admin/:path*',
+        destination: `${backendOrigin}/api/admin/:path*`,
+      },
     ];
   },
 };
