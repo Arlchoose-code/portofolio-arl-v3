@@ -1471,16 +1471,23 @@ function AdminMailboxContent() {
                       <div
                         key={t.id}
                         onClick={() => handleSelectThread(t)}
-                        className={`group px-4 py-3 flex items-center gap-3 cursor-pointer transition-all hover:shadow-xs relative ${
+                        className={`group px-4 py-3.5 flex items-center gap-3 cursor-pointer transition-all border-l-4 relative ${
                           isUnread
-                            ? 'bg-lime-500/[0.04] dark:bg-brand/[0.04] hover:bg-lime-500/[0.08]'
-                            : 'hover:bg-[var(--bg-elevated)]/60'
+                            ? 'bg-lime-500/10 dark:bg-brand/10 hover:bg-lime-500/15 border-l-lime-600 dark:border-l-brand shadow-xs'
+                            : 'hover:bg-[var(--bg-elevated)]/60 border-l-transparent opacity-85 hover:opacity-100'
                         }`}
                       >
-                        {/* Unread Left Border Highlight Indicator */}
-                        {isUnread && (
-                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-lime-600 dark:bg-brand" />
-                        )}
+                        {/* Unread Status Dot Indicator */}
+                        <div className="w-3 flex items-center justify-center shrink-0">
+                          {isUnread ? (
+                            <span
+                              className="w-2.5 h-2.5 rounded-full bg-lime-600 dark:bg-brand ring-4 ring-lime-500/20 shrink-0 animate-pulse"
+                              title="Belum dibaca"
+                            />
+                          ) : (
+                            <span className="w-2 h-2 rounded-full bg-transparent" />
+                          )}
+                        </div>
 
                         {/* Star Button */}
                         <button
@@ -1496,36 +1503,51 @@ function AdminMailboxContent() {
                           />
                         </button>
 
-                        {/* Sender / Recipient Name (Fixed Width Column) */}
-                        <div className="w-36 sm:w-48 lg:w-56 shrink-0 truncate">
+                        {/* Sender / Recipient Name Column */}
+                        <div className="w-40 sm:w-52 lg:w-60 shrink-0 flex items-center gap-2 min-w-0">
                           <span
                             className={`text-xs truncate block ${
-                              isUnread ? 'font-bold text-[var(--text-primary)]' : 'font-medium text-[var(--text-secondary)]'
+                              isUnread
+                                ? 'font-black text-[var(--text-primary)] text-[13px]'
+                                : 'font-normal text-[var(--text-muted)]'
                             }`}
                           >
                             {senderDisplay}
                           </span>
+                          {isUnread && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-lime-600 text-white dark:bg-brand dark:text-[#0a0a0a] shrink-0">
+                              BARU
+                            </span>
+                          )}
                         </div>
 
                         {/* Subject + Inline Snippet (Expands across full center width) */}
                         <div className="flex-1 min-w-0 flex items-center gap-2">
                           <span
-                            className={`text-xs truncate shrink-0 max-w-[40%] ${
-                              isUnread ? 'font-bold text-[var(--text-primary)]' : 'font-medium text-[var(--text-primary)]'
+                            className={`text-xs truncate shrink-0 max-w-[45%] ${
+                              isUnread
+                                ? 'font-black text-[var(--text-primary)] text-[13px]'
+                                : 'font-normal text-[var(--text-secondary)]'
                             }`}
                           >
                             {t.subject || '(Tanpa Subjek)'}
                           </span>
 
-                          <span className="text-xs text-[var(--text-muted)] shrink-0">-</span>
+                          <span className={`text-xs shrink-0 ${isUnread ? 'text-[var(--text-primary)] font-bold' : 'text-[var(--text-muted)]'}`}>
+                            -
+                          </span>
 
-                          <span className="text-xs text-[var(--text-muted)] truncate flex-1">
+                          <span
+                            className={`text-xs truncate flex-1 ${
+                              isUnread ? 'font-medium text-[var(--text-primary)]/90' : 'text-[var(--text-muted)]'
+                            }`}
+                          >
                             {t.snippet || 'Tidak ada pratinjau teks.'}
                           </span>
 
                           {/* Attachment Badge Pill */}
                           {hasAttachments && (
-                            <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--bg-elevated)] border border-[var(--border)] text-[var(--text-muted)] shrink-0">
+                            <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--bg-elevated)] border border-[var(--border)] text-[var(--text-primary)] shrink-0">
                               <Paperclip className="w-3 h-3 text-lime-700 dark:text-brand" />
                               <span>Lampiran</span>
                             </span>
@@ -1563,7 +1585,7 @@ function AdminMailboxContent() {
                           {/* Date String */}
                           <span
                             className={`text-xs font-mono shrink-0 ${
-                              isUnread ? 'font-bold text-[var(--text-primary)]' : 'text-[var(--text-muted)]'
+                              isUnread ? 'font-black text-lime-700 dark:text-brand' : 'text-[var(--text-muted)]'
                             }`}
                           >
                             {formatEmailTime(t.last_message_at)}
