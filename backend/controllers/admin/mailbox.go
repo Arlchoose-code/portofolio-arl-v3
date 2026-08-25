@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"encoding/json"
 	"fmt"
 	"html"
 	"net/http"
@@ -114,10 +115,37 @@ func (ctrl *MailboxController) SendEmail(c *gin.Context) {
 		bodyHtml = fmt.Sprintf(`<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #1a1a1a;">%s</div>`, formatted)
 	}
 
-	// Send via Brevo API
-	msgID, err := services.Email.SendTransactionalEmail(
+	// Determine Sender & Reply-To
+	senderEmail := strings.TrimSpace(req.SenderEmail)
+	senderName := strings.TrimSpace(req.SenderName)
+	if senderEmail == "" {
+		senderEmail = setting.DefaultSenderEmail
+	}
+	if senderName == "" {
+		senderName = setting.DefaultSenderName
+	}
+	if senderEmail == "" {
+		senderEmail = "contact@arlab.my.id"
+	}
+	if senderName == "" {
+		senderName = "Syahril Haryono"
+	}
+
+	replyToEmail := strings.TrimSpace(req.ReplyToEmail)
+	if replyToEmail == "" {
+		replyToEmail = setting.ReplyToEmail
+	}
+	replyToName := strings.TrimSpace(req.ReplyToName)
+	if replyToName == "" {
+		replyToName = setting.ReplyToName
+	}
+
+	// Send via Brevo / Resend / Hybrid
+	msgID, err := services.Email.SendTransactionalEmailWithSender(
 		c.Request.Context(),
 		&setting,
+		senderEmail,
+		senderName,
 		toEmail,
 		toName,
 		req.Cc,
@@ -125,8 +153,8 @@ func (ctrl *MailboxController) SendEmail(c *gin.Context) {
 		subject,
 		bodyHtml,
 		bodyText,
-		setting.DefaultSenderEmail,
-		setting.DefaultSenderName,
+		replyToEmail,
+		replyToName,
 		"",
 	)
 	if err != nil {
@@ -151,15 +179,6 @@ func (ctrl *MailboxController) SendEmail(c *gin.Context) {
 	}
 	config.DB.Create(&thread)
 
-	senderEmail := setting.DefaultSenderEmail
-	if senderEmail == "" {
-		senderEmail = "contact@syahril.dev"
-	}
-	senderName := setting.DefaultSenderName
-	if senderName == "" {
-		senderName = "Syahril Haryono"
-	}
-
 	emailMsg := models.EmailMessage{
 		ThreadID:  thread.ID,
 		Direction: "outbound",
@@ -180,9 +199,10 @@ func (ctrl *MailboxController) SendEmail(c *gin.Context) {
 	}
 	config.DB.Create(&emailMsg)
 
-	c.JSON(http.StatusCreated, structs.SuccessResponse("Email berhasil dikirim via Brevo", gin.H{
+	c.JSON(http.StatusCreated, structs.SuccessResponse("Email berhasil dikirim", gin.H{
 		"thread_id":  thread.ID,
 		"message_id": msgID,
+		"sender":     senderEmail,
 	}))
 }
 
@@ -229,9 +249,30 @@ func (ctrl *MailboxController) ReplyEmail(c *gin.Context) {
 		bodyHtml = fmt.Sprintf(`<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #1a1a1a;">%s</div>`, formatted)
 	}
 
-	msgID, err := services.Email.SendTransactionalEmail(
+	// Determine Sender & Reply-To
+	senderEmail := strings.TrimSpace(req.SenderEmail)
+	senderName := strings.TrimSpace(req.SenderName)
+	if senderEmail == "" {
+		senderEmail = setting.DefaultSenderEmail
+	}
+	if senderName == "" {
+		senderName = setting.DefaultSenderName
+	}
+	if senderEmail == "" {
+		senderEmail = "contact@arlab.my.id"
+	}
+	if senderName == "" {
+		senderName = "Syahril Haryono"
+	}
+
+	replyToEmail := setting.ReplyToEmail
+	replyToName := setting.ReplyToName
+
+	msgID, err := services.Email.SendTransactionalEmailWithSender(
 		c.Request.Context(),
 		&setting,
+		senderEmail,
+		senderName,
 		toEmail,
 		toName,
 		"",
@@ -239,8 +280,8 @@ func (ctrl *MailboxController) ReplyEmail(c *gin.Context) {
 		replySubject,
 		bodyHtml,
 		bodyText,
-		setting.DefaultSenderEmail,
-		setting.DefaultSenderName,
+		replyToEmail,
+		replyToName,
 		lastMsg.MessageID,
 	)
 	if err != nil {
@@ -261,15 +302,6 @@ func (ctrl *MailboxController) ReplyEmail(c *gin.Context) {
 	thread.IsTrash = false
 	config.DB.Save(&thread)
 
-	senderEmail := setting.DefaultSenderEmail
-	if senderEmail == "" {
-		senderEmail = "contact@syahril.dev"
-	}
-	senderName := setting.DefaultSenderName
-	if senderName == "" {
-		senderName = "Syahril Haryono"
-	}
-
 	emailMsg := models.EmailMessage{
 		ThreadID:  thread.ID,
 		Direction: "outbound",
@@ -289,93 +321,153 @@ func (ctrl *MailboxController) ReplyEmail(c *gin.Context) {
 	}
 	config.DB.Create(&emailMsg)
 
-	c.JSON(http.StatusCreated, structs.SuccessResponse("Balasan berhasil dikirim", gin.H{
+	c.JSON(http.StatusCreated, structs.SuccessResponse("Balasan email berhasil dikirim", gin.H{
 		"thread_id":  thread.ID,
 		"message_id": msgID,
+		"sender":     senderEmail,
 	}))
 }
 
 func (ctrl *MailboxController) UpdateThreadStatus(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, structs.ErrorResponse("Invalid ID"))
-		return
-	}
-
-	var thread models.EmailThread
-	if err := config.DB.First(&thread, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, structs.ErrorResponse("Thread not found"))
+		c.JSON(http.StatusBadRequest, structs.ErrorResponse("ID thread tidak valid"))
 		return
 	}
 
 	var req structs.UpdateEmailStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusUnprocessableEntity, structs.ValidationErrorResponse("Invalid status data", nil))
-		return
-	}
-
-	if req.IsRead != nil {
-		thread.HasUnread = !*req.IsRead
-		config.DB.Model(&models.EmailMessage{}).Where("thread_id = ?", thread.ID).Update("is_read", *req.IsRead)
-	}
-
-	if req.IsStarred != nil {
-		thread.IsStarred = *req.IsStarred
-		config.DB.Model(&models.EmailMessage{}).Where("thread_id = ?", thread.ID).Update("is_starred", *req.IsStarred)
-	}
-
-	if req.IsTrash != nil {
-		thread.IsTrash = *req.IsTrash
-		config.DB.Model(&models.EmailMessage{}).Where("thread_id = ?", thread.ID).Update("is_trash", *req.IsTrash)
-	}
-
-	if err := config.DB.Save(&thread).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, structs.ErrorResponse("Failed to update status"))
-		return
-	}
-
-	c.JSON(http.StatusOK, structs.SuccessResponse("Status updated", thread))
-}
-
-func (ctrl *MailboxController) DeleteThread(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, structs.ErrorResponse("Invalid ID"))
+		c.JSON(http.StatusUnprocessableEntity, structs.ValidationErrorResponse("Data status tidak valid", nil))
 		return
 	}
 
 	var thread models.EmailThread
 	if err := config.DB.First(&thread, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, structs.ErrorResponse("Thread not found"))
+		c.JSON(http.StatusNotFound, structs.ErrorResponse("Thread tidak ditemukan"))
 		return
 	}
 
-	// Delete all messages in thread
+	updates := map[string]interface{}{}
+	if req.IsRead != nil {
+		updates["has_unread"] = !*req.IsRead
+		config.DB.Model(&models.EmailMessage{}).Where("thread_id = ?", thread.ID).Update("is_read", *req.IsRead)
+	}
+	if req.IsStarred != nil {
+		updates["is_starred"] = *req.IsStarred
+	}
+	if req.IsTrash != nil {
+		updates["is_trash"] = *req.IsTrash
+	}
+
+	if len(updates) > 0 {
+		config.DB.Model(&thread).Updates(updates)
+	}
+
+	c.JSON(http.StatusOK, structs.SuccessResponse("Status thread berhasil diperbarui", thread))
+}
+
+func (ctrl *MailboxController) DeleteThread(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, structs.ErrorResponse("ID thread tidak valid"))
+		return
+	}
+
+	var thread models.EmailThread
+	if err := config.DB.First(&thread, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, structs.ErrorResponse("Thread tidak ditemukan"))
+		return
+	}
+
 	config.DB.Where("thread_id = ?", thread.ID).Delete(&models.EmailMessage{})
 	config.DB.Delete(&thread)
 
-	c.JSON(http.StatusOK, structs.SuccessResponse("Thread permanently deleted", nil))
+	c.JSON(http.StatusOK, structs.SuccessResponse("Thread dan seluruh pesannya berhasil dihapus permanen", nil))
 }
 
 func (ctrl *MailboxController) GetMailboxStats(c *gin.Context) {
-	var unreadCount int64
 	var inboxCount int64
+	var unreadCount int64
 	var sentCount int64
 	var starredCount int64
 	var trashCount int64
 
-	config.DB.Model(&models.EmailThread{}).Where("is_trash = ? AND has_unread = ? AND id IN (SELECT DISTINCT thread_id FROM email_messages WHERE direction = 'inbound')", false, true).Count(&unreadCount)
-	config.DB.Model(&models.EmailThread{}).Where("is_trash = ? AND id IN (SELECT DISTINCT thread_id FROM email_messages WHERE direction = 'inbound')", false).Count(&inboxCount)
-	config.DB.Model(&models.EmailThread{}).Where("is_trash = ? AND id IN (SELECT DISTINCT thread_id FROM email_messages WHERE direction = 'outbound')", false).Count(&sentCount)
-	config.DB.Model(&models.EmailThread{}).Where("is_trash = ? AND is_starred = ?", false, true).Count(&starredCount)
-	config.DB.Model(&models.EmailThread{}).Where("is_trash = ?", true).Count(&trashCount)
+	config.DB.Model(&models.EmailThread{}).Where("is_trash = false").Count(&inboxCount)
+	config.DB.Model(&models.EmailThread{}).Where("is_trash = false AND has_unread = true").Count(&unreadCount)
+	config.DB.Model(&models.EmailMessage{}).Where("direction = 'outbound'").Count(&sentCount)
+	config.DB.Model(&models.EmailThread{}).Where("is_trash = false AND is_starred = true").Count(&starredCount)
+	config.DB.Model(&models.EmailThread{}).Where("is_trash = true").Count(&trashCount)
 
-	c.JSON(http.StatusOK, structs.SuccessResponse("Mailbox stats", gin.H{
-		"unread_count":  unreadCount,
+	c.JSON(http.StatusOK, structs.SuccessResponse("Mailbox stats retrieved", gin.H{
 		"inbox_count":   inboxCount,
+		"unread_count":  unreadCount,
 		"sent_count":    sentCount,
 		"starred_count": starredCount,
 		"trash_count":   trashCount,
+	}))
+}
+
+func (ctrl *MailboxController) GetSenders(c *gin.Context) {
+	var setting models.EmailSetting
+	config.DB.First(&setting)
+
+	var senders []structs.SenderItem
+	if setting.CustomSendersJSON != "" {
+		_ = json.Unmarshal([]byte(setting.CustomSendersJSON), &senders)
+	}
+
+	if len(senders) == 0 {
+		defaultEmail := setting.DefaultSenderEmail
+		if defaultEmail == "" {
+			defaultEmail = "contact@arlab.my.id"
+		}
+		defaultName := setting.DefaultSenderName
+		if defaultName == "" {
+			defaultName = "Syahril Haryono"
+		}
+		senders = append(senders, structs.SenderItem{
+			Email:     defaultEmail,
+			Name:      defaultName,
+			IsDefault: true,
+			Active:    true,
+		})
+	}
+
+	c.JSON(http.StatusOK, structs.SuccessResponse("Daftar sender berhasil dimuat", gin.H{
+		"senders":                senders,
+		"default_sender_email":   setting.DefaultSenderEmail,
+		"default_sender_name":    setting.DefaultSenderName,
+		"reply_to_email":         setting.ReplyToEmail,
+		"reply_to_name":          setting.ReplyToName,
+		"allowed_inbound_emails": setting.AllowedInboundEmails,
+	}))
+}
+
+func (ctrl *MailboxController) SyncBrevoSenders(c *gin.Context) {
+	var setting models.EmailSetting
+	if err := config.DB.First(&setting).Error; err != nil || setting.BrevoAPIKey == "" {
+		c.JSON(http.StatusBadRequest, structs.ErrorResponse("API Key Brevo belum dikonfigurasi"))
+		return
+	}
+
+	senders, err := services.Email.FetchBrevoSenders(c.Request.Context(), setting.BrevoAPIKey)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, structs.ErrorResponse(fmt.Sprintf("Gagal menyinkronkan pengirim dari Brevo: %v", err)))
+		return
+	}
+
+	for i := range senders {
+		if senders[i].Email == setting.DefaultSenderEmail {
+			senders[i].IsDefault = true
+		}
+	}
+
+	sendersBytes, _ := json.Marshal(senders)
+	setting.CustomSendersJSON = string(sendersBytes)
+	config.DB.Save(&setting)
+
+	c.JSON(http.StatusOK, structs.SuccessResponse(fmt.Sprintf("Berhasil menyinkronkan %d pengirim terverifikasi dari Brevo", len(senders)), gin.H{
+		"senders": senders,
 	}))
 }
 
@@ -401,17 +493,27 @@ func (ctrl *MailboxController) GetSettings(c *gin.Context) {
 		maskedResendKey = maskedResendKey[:6] + "..." + maskedResendKey[len(maskedResendKey)-4:]
 	}
 
+	var senders []structs.SenderItem
+	if setting.CustomSendersJSON != "" {
+		_ = json.Unmarshal([]byte(setting.CustomSendersJSON), &senders)
+	}
+
 	c.JSON(http.StatusOK, structs.SuccessResponse("Email settings retrieved", gin.H{
-		"id":                    setting.ID,
-		"active_provider":       setting.ActiveProvider,
-		"brevo_api_key":         setting.BrevoAPIKey,
-		"brevo_api_key_masked":  maskedBrevoKey,
-		"resend_api_key":        setting.ResendAPIKey,
-		"resend_api_key_masked": maskedResendKey,
-		"default_sender_email":  setting.DefaultSenderEmail,
-		"default_sender_name":   setting.DefaultSenderName,
-		"inbound_domain":        setting.InboundDomain,
-		"is_configured":         setting.BrevoAPIKey != "" || setting.ResendAPIKey != "",
+		"id":                     setting.ID,
+		"active_provider":        setting.ActiveProvider,
+		"brevo_api_key":          setting.BrevoAPIKey,
+		"brevo_api_key_masked":   maskedBrevoKey,
+		"resend_api_key":         setting.ResendAPIKey,
+		"resend_api_key_masked":  maskedResendKey,
+		"default_sender_email":   setting.DefaultSenderEmail,
+		"default_sender_name":    setting.DefaultSenderName,
+		"reply_to_email":         setting.ReplyToEmail,
+		"reply_to_name":          setting.ReplyToName,
+		"custom_senders_json":    setting.CustomSendersJSON,
+		"custom_senders":         senders,
+		"allowed_inbound_emails": setting.AllowedInboundEmails,
+		"inbound_domain":         setting.InboundDomain,
+		"is_configured":          setting.BrevoAPIKey != "" || setting.ResendAPIKey != "",
 	}))
 }
 
@@ -441,6 +543,18 @@ func (ctrl *MailboxController) UpdateSettings(c *gin.Context) {
 	}
 	if req.DefaultSenderName != "" {
 		setting.DefaultSenderName = strings.TrimSpace(req.DefaultSenderName)
+	}
+	if req.ReplyToEmail != "" {
+		setting.ReplyToEmail = strings.TrimSpace(req.ReplyToEmail)
+	}
+	if req.ReplyToName != "" {
+		setting.ReplyToName = strings.TrimSpace(req.ReplyToName)
+	}
+	if req.CustomSendersJSON != "" {
+		setting.CustomSendersJSON = strings.TrimSpace(req.CustomSendersJSON)
+	}
+	if req.AllowedInboundEmails != "" {
+		setting.AllowedInboundEmails = strings.TrimSpace(req.AllowedInboundEmails)
 	}
 	if req.InboundDomain != "" {
 		setting.InboundDomain = strings.TrimSpace(req.InboundDomain)

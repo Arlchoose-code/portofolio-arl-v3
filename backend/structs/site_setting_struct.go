@@ -15,6 +15,8 @@ type UpdateSiteSettingRequest struct {
 	AvailableStatus    string `json:"available_status"`
 	AvailableBadgeText string `json:"available_badge_text"`
 	CustomBadgeText    string `json:"custom_badge_text"`
+	ContactEmail       string `json:"contact_email"`
+	ContactLocation    string `json:"contact_location"`
 	TurnstileEnabled   bool   `json:"turnstile_enabled"`
 	TurnstileSiteKey   string `json:"turnstile_site_key"`
 	TurnstileSecretKey string `json:"turnstile_secret_key"`

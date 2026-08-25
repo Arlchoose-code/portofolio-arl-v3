@@ -153,6 +153,8 @@ func RegisterAdminRoutes(r *gin.RouterGroup, cfg *config.Config) {
 		adminProtected.PUT("/mailbox/threads/:id/status", mailboxCtrl.UpdateThreadStatus)
 		adminProtected.DELETE("/mailbox/threads/:id", mailboxCtrl.DeleteThread)
 		adminProtected.GET("/mailbox/stats", mailboxCtrl.GetMailboxStats)
+		adminProtected.GET("/mailbox/senders", mailboxCtrl.GetSenders)
+		adminProtected.POST("/mailbox/sync-senders", mailboxCtrl.SyncBrevoSenders)
 		adminProtected.GET("/mailbox/settings", mailboxCtrl.GetSettings)
 		adminProtected.PUT("/mailbox/settings", mailboxCtrl.UpdateSettings)
 

@@ -55,6 +55,12 @@ func (ctrl *SiteSettingController) UpdateSiteSetting(c *gin.Context) {
 	setting.AvailableStatus = req.AvailableStatus
 	setting.AvailableBadgeText = req.AvailableBadgeText
 	setting.CustomBadgeText = req.CustomBadgeText
+	if req.ContactEmail != "" {
+		setting.ContactEmail = req.ContactEmail
+	}
+	if req.ContactLocation != "" {
+		setting.ContactLocation = req.ContactLocation
+	}
 	setting.TurnstileEnabled = req.TurnstileEnabled
 	setting.TurnstileSiteKey = req.TurnstileSiteKey
 	if req.TurnstileSecretKey != "" {

@@ -1,19 +1,33 @@
 package structs
 
+type SenderItem struct {
+	ID        int    `json:"id,omitempty"`
+	Email     string `json:"email"`
+	Name      string `json:"name"`
+	IsDefault bool   `json:"is_default,omitempty"`
+	Active    bool   `json:"active,omitempty"`
+}
+
 type SendEmailRequest struct {
-	ToEmail  string `json:"to_email" binding:"required,email"`
-	ToName   string `json:"to_name"`
-	Cc       string `json:"cc"`
-	Bcc      string `json:"bcc"`
-	Subject  string `json:"subject" binding:"required,min=1,max=255"`
-	BodyHtml string `json:"body_html" binding:"required,min=1"`
-	BodyText string `json:"body_text"`
+	SenderEmail  string `json:"sender_email"`
+	SenderName   string `json:"sender_name"`
+	ReplyToEmail string `json:"reply_to_email"`
+	ReplyToName  string `json:"reply_to_name"`
+	ToEmail      string `json:"to_email" binding:"required,email"`
+	ToName       string `json:"to_name"`
+	Cc           string `json:"cc"`
+	Bcc          string `json:"bcc"`
+	Subject      string `json:"subject" binding:"required,min=1,max=255"`
+	BodyHtml     string `json:"body_html" binding:"required,min=1"`
+	BodyText     string `json:"body_text"`
 }
 
 type ReplyEmailRequest struct {
-	ThreadID uint   `json:"thread_id" binding:"required"`
-	BodyHtml string `json:"body_html" binding:"required,min=1"`
-	BodyText string `json:"body_text"`
+	ThreadID    uint   `json:"thread_id" binding:"required"`
+	SenderEmail string `json:"sender_email"`
+	SenderName  string `json:"sender_name"`
+	BodyHtml    string `json:"body_html" binding:"required,min=1"`
+	BodyText    string `json:"body_text"`
 }
 
 type UpdateEmailStatusRequest struct {
@@ -23,12 +37,16 @@ type UpdateEmailStatusRequest struct {
 }
 
 type UpdateEmailSettingRequest struct {
-	ActiveProvider     string `json:"active_provider"` // 'brevo', 'resend', 'hybrid'
-	BrevoAPIKey        string `json:"brevo_api_key"`
-	ResendAPIKey       string `json:"resend_api_key"`
-	DefaultSenderEmail string `json:"default_sender_email"`
-	DefaultSenderName  string `json:"default_sender_name"`
-	InboundDomain      string `json:"inbound_domain"`
+	ActiveProvider       string `json:"active_provider"` // 'brevo', 'resend', 'hybrid'
+	BrevoAPIKey          string `json:"brevo_api_key"`
+	ResendAPIKey         string `json:"resend_api_key"`
+	DefaultSenderEmail   string `json:"default_sender_email"`
+	DefaultSenderName    string `json:"default_sender_name"`
+	ReplyToEmail         string `json:"reply_to_email"`
+	ReplyToName          string `json:"reply_to_name"`
+	CustomSendersJSON    string `json:"custom_senders_json"`
+	AllowedInboundEmails string `json:"allowed_inbound_emails"`
+	InboundDomain        string `json:"inbound_domain"`
 }
 
 // Brevo Inbound Webhook Parsing Schema

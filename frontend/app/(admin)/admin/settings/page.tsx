@@ -73,6 +73,8 @@ export default function AdminSettingsPage() {
   const [availableStatus, setAvailableStatus] = useState('Available for Work');
   const [availableBadgeText, setAvailableBadgeText] = useState('Open for Engineering & AI Roles');
   const [customBadgeText, setCustomBadgeText] = useState('Full Stack • Applied AI');
+  const [contactEmail, setContactEmail] = useState('contact@arlab.my.id');
+  const [contactLocation, setContactLocation] = useState('Jakarta, Indonesia');
   const [turnstileEnabled, setTurnstileEnabled] = useState(false);
   const [turnstileSiteKey, setTurnstileSiteKey] = useState('');
   const [turnstileSecretKey, setTurnstileSecretKey] = useState('');
@@ -107,6 +109,8 @@ export default function AdminSettingsPage() {
         setAvailableStatus(s.available_status || 'Available for Work');
         setAvailableBadgeText(s.available_badge_text || 'Open for Engineering & AI Roles');
         setCustomBadgeText(s.custom_badge_text || 'Full Stack • Applied AI');
+        setContactEmail(s.contact_email || 'contact@arlab.my.id');
+        setContactLocation(s.contact_location || 'Jakarta, Indonesia');
         setTurnstileEnabled(Boolean(s.turnstile_enabled));
         setTurnstileSiteKey(s.turnstile_site_key || '');
         setTurnstileSecretKey(s.turnstile_secret_key || '');
@@ -165,6 +169,8 @@ export default function AdminSettingsPage() {
         available_status: availableStatus,
         available_badge_text: availableBadgeText,
         custom_badge_text: customBadgeText,
+        contact_email: contactEmail,
+        contact_location: contactLocation,
         turnstile_enabled: turnstileEnabled,
         turnstile_site_key: turnstileSiteKey,
         turnstile_secret_key: turnstileSecretKey,
@@ -393,6 +399,38 @@ export default function AdminSettingsPage() {
             <p className="text-[11px] text-[var(--text-muted)]">
               SEO seluruh halaman publik otomatis menggunakan deskripsi ini jika tidak diisi khusus.
             </p>
+          </div>
+
+          {/* Contact Information Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]/30 p-4 sm:p-5">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                Email Kontak Publik (Tampil di Halaman Kontak &amp; Footer)
+              </label>
+              <Input
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder="contact@arlab.my.id"
+              />
+              <p className="text-[10px] text-[var(--text-muted)]">
+                Alamat email resmi yang dapat diklik oleh pengunjung pada halaman Hubungi Saya dan footer.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                Lokasi Domisili (Halaman Kontak)
+              </label>
+              <Input
+                value={contactLocation}
+                onChange={(e) => setContactLocation(e.target.value)}
+                placeholder="Jakarta, Indonesia"
+              />
+              <p className="text-[10px] text-[var(--text-muted)]">
+                Lokasi kota &amp; negara tempat tinggal untuk info kontak profesional.
+              </p>
+            </div>
           </div>
 
           {/* Work Status & Hero Badges Section */}

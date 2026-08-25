@@ -177,6 +177,8 @@ export interface SiteSetting {
   available_status?: string;
   available_badge_text?: string;
   custom_badge_text?: string;
+  contact_email?: string;
+  contact_location?: string;
   turnstile_enabled?: boolean;
   turnstile_site_key?: string;
   turnstile_secret_key?: string;
@@ -305,6 +307,14 @@ export interface EmailMessage {
   updated_at?: string;
 }
 
+export interface SenderItem {
+  id?: number;
+  email: string;
+  name: string;
+  is_default?: boolean;
+  active?: boolean;
+}
+
 export interface EmailSetting {
   id?: number;
   active_provider?: 'brevo' | 'resend' | 'hybrid';
@@ -314,6 +324,11 @@ export interface EmailSetting {
   resend_api_key_masked?: string;
   default_sender_email: string;
   default_sender_name: string;
+  reply_to_email?: string;
+  reply_to_name?: string;
+  custom_senders_json?: string;
+  custom_senders?: SenderItem[];
+  allowed_inbound_emails?: string;
   inbound_domain?: string;
   is_configured: boolean;
 }

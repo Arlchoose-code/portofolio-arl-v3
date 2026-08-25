@@ -291,10 +291,91 @@ func (s *EmailService) FetchResendInboundEmail(ctx context.Context, apiKey, emai
 	return &details, nil
 }
 
+// FetchBrevoSenders fetches verified sender identities from Brevo account
+type BrevoSendersResponse struct {
+	Senders []struct {
+		ID     int    `json:"id"`
+		Name   string `json:"name"`
+		Email  string `json:"email"`
+		Active bool   `json:"active"`
+	} `json:"senders"`
+}
+
+func (s *EmailService) FetchBrevoSenders(ctx context.Context, apiKey string) ([]structs.SenderItem, error) {
+	if apiKey == "" {
+		return nil, fmt.Errorf("kunci API Brevo tidak boleh kosong")
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.brevo.com/v3/senders", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("api-key", strings.TrimSpace(apiKey))
+	req.Header.Set("accept", "application/json")
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("Brevo API error (%d): %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var res BrevoSendersResponse
+	if err := json.Unmarshal(bodyBytes, &res); err != nil {
+		return nil, err
+	}
+
+	var senders []structs.SenderItem
+	for _, s := range res.Senders {
+		senders = append(senders, structs.SenderItem{
+			ID:     s.ID,
+			Email:  s.Email,
+			Name:   s.Name,
+			Active: s.Active,
+		})
+	}
+
+	return senders, nil
+}
+
 // SendTransactionalEmail orchestrates sending via Brevo, Resend, or Hybrid fallback
 func (s *EmailService) SendTransactionalEmail(
 	ctx context.Context,
 	setting *models.EmailSetting,
+	toEmail, toName, cc, bcc, subject, htmlBody, textBody, replyToEmail, replyToName string,
+	inReplyToMsgId string,
+) (string, error) {
+	return s.SendTransactionalEmailWithSender(
+		ctx,
+		setting,
+		"",
+		"",
+		toEmail,
+		toName,
+		cc,
+		bcc,
+		subject,
+		htmlBody,
+		textBody,
+		replyToEmail,
+		replyToName,
+		inReplyToMsgId,
+	)
+}
+
+// SendTransactionalEmailWithSender allows explicit sender overrides
+func (s *EmailService) SendTransactionalEmailWithSender(
+	ctx context.Context,
+	setting *models.EmailSetting,
+	customSenderEmail, customSenderName string,
 	toEmail, toName, cc, bcc, subject, htmlBody, textBody, replyToEmail, replyToName string,
 	inReplyToMsgId string,
 ) (string, error) {
@@ -318,10 +399,17 @@ func (s *EmailService) SendTransactionalEmail(
 		resendKey = strings.TrimSpace(setting.ResendAPIKey)
 	}
 
+	if strings.TrimSpace(customSenderEmail) != "" {
+		senderEmail = strings.TrimSpace(customSenderEmail)
+	}
+	if strings.TrimSpace(customSenderName) != "" {
+		senderName = strings.TrimSpace(customSenderName)
+	}
+
 	// Dev simulation if no keys configured
 	if brevoKey == "" && resendKey == "" {
 		simulatedID := fmt.Sprintf("<simulated-%d@portfolio.local>", time.Now().UnixNano())
-		log.Printf("[EmailService DEV SIMULATION] To: %s, Subject: %s (No Email API Key configured)\n", toEmail, subject)
+		log.Printf("[EmailService DEV SIMULATION] From: %s <%s>, To: %s, Subject: %s (No Email API Key configured)\n", senderName, senderEmail, toEmail, subject)
 		return simulatedID, nil
 	}
 

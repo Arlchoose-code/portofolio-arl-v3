@@ -18,6 +18,8 @@ type SiteSetting struct {
 	AvailableStatus    string    `gorm:"size:100;default:'Available for Work'" json:"available_status"`
 	AvailableBadgeText string    `gorm:"size:255;default:'Open for Engineering & AI Roles'" json:"available_badge_text"`
 	CustomBadgeText    string    `gorm:"size:255;default:'Full Stack • Applied AI'" json:"custom_badge_text"`
+	ContactEmail       string    `gorm:"size:255;default:'contact@arlab.my.id'" json:"contact_email"`
+	ContactLocation    string    `gorm:"size:255;default:'Jakarta, Indonesia'" json:"contact_location"`
 	TurnstileEnabled   bool      `gorm:"default:false" json:"turnstile_enabled"`
 	TurnstileSiteKey   string    `gorm:"size:255" json:"turnstile_site_key"`
 	TurnstileSecretKey string    `gorm:"size:255" json:"-"`

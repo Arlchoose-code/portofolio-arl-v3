@@ -175,6 +175,10 @@ export const mailboxApi = {
     client.getPaginated<EmailThread>('admin/mailbox/threads', params),
   getThread: (id: number) => client.get<EmailThread>(`admin/mailbox/threads/${id}`),
   send: (data: {
+    sender_email?: string;
+    sender_name?: string;
+    reply_to_email?: string;
+    reply_to_name?: string;
     to_email: string;
     to_name?: string;
     cc?: string;
@@ -182,13 +186,29 @@ export const mailboxApi = {
     subject: string;
     body_html: string;
     body_text?: string;
-  }) => client.post<{ thread_id: number; message_id: string }>('admin/mailbox/send', data),
-  reply: (data: { thread_id: number; body_html: string; body_text?: string }) =>
-    client.post<{ thread_id: number; message_id: string }>('admin/mailbox/reply', data),
+  }) => client.post<{ thread_id: number; message_id: string; sender?: string }>('admin/mailbox/send', data),
+  reply: (data: {
+    thread_id: number;
+    sender_email?: string;
+    sender_name?: string;
+    body_html: string;
+    body_text?: string;
+  }) => client.post<{ thread_id: number; message_id: string; sender?: string }>('admin/mailbox/reply', data),
   updateStatus: (id: number, data: { is_read?: boolean; is_starred?: boolean; is_trash?: boolean }) =>
     client.put<EmailThread>(`admin/mailbox/threads/${id}/status`, data),
   deleteThread: (id: number) => client.delete(`admin/mailbox/threads/${id}`),
   getStats: () => client.get<MailboxStats>('admin/mailbox/stats'),
+  getSenders: () =>
+    client.get<{
+      senders: import('@/types').SenderItem[];
+      default_sender_email: string;
+      default_sender_name: string;
+      reply_to_email?: string;
+      reply_to_name?: string;
+      allowed_inbound_emails?: string;
+    }>('admin/mailbox/senders'),
+  syncBrevoSenders: () =>
+    client.post<{ senders: import('@/types').SenderItem[] }>('admin/mailbox/sync-senders', {}),
   getSettings: () => client.get<EmailSetting>('admin/mailbox/settings'),
   updateSettings: (data: Partial<EmailSetting>) => client.put<EmailSetting>('admin/mailbox/settings', data),
 };

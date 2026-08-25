@@ -3,16 +3,20 @@ package models
 import "time"
 
 type EmailSetting struct {
-	ID                 uint      `gorm:"primaryKey;autoIncrement" json:"id"`
-	ActiveProvider     string    `gorm:"size:50;default:'hybrid'" json:"active_provider"` // 'brevo', 'resend', 'hybrid'
-	BrevoAPIKey        string    `gorm:"size:255" json:"brevo_api_key"`
-	ResendAPIKey       string    `gorm:"size:255" json:"resend_api_key"`
-	DefaultSenderEmail string    `gorm:"size:150;default:'contact@arlab.my.id'" json:"default_sender_email"`
-	DefaultSenderName  string    `gorm:"size:100;default:'Syahril Haryono'" json:"default_sender_name"`
-	InboundDomain      string    `gorm:"size:150" json:"inbound_domain"`
-	IsConfigured       bool      `gorm:"default:false" json:"is_configured"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	ID                   uint      `gorm:"primaryKey;autoIncrement" json:"id"`
+	ActiveProvider       string    `gorm:"size:50;default:'hybrid'" json:"active_provider"` // 'brevo', 'resend', 'hybrid'
+	BrevoAPIKey          string    `gorm:"size:255" json:"brevo_api_key"`
+	ResendAPIKey         string    `gorm:"size:255" json:"resend_api_key"`
+	DefaultSenderEmail   string    `gorm:"size:150;default:'contact@arlab.my.id'" json:"default_sender_email"`
+	DefaultSenderName    string    `gorm:"size:100;default:'Syahril Haryono'" json:"default_sender_name"`
+	ReplyToEmail         string    `gorm:"size:150" json:"reply_to_email"`
+	ReplyToName          string    `gorm:"size:100" json:"reply_to_name"`
+	CustomSendersJSON    string    `gorm:"type:text" json:"custom_senders_json"`
+	AllowedInboundEmails string    `gorm:"type:text" json:"allowed_inbound_emails"`
+	InboundDomain        string    `gorm:"size:150" json:"inbound_domain"`
+	IsConfigured         bool      `gorm:"default:false" json:"is_configured"`
+	CreatedAt            time.Time `json:"created_at"`
+	UpdatedAt            time.Time `json:"updated_at"`
 }
 
 type EmailThread struct {

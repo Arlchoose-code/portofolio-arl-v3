@@ -1,6 +1,8 @@
 package public
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -19,6 +21,58 @@ func NewEmailWebhookController() *EmailWebhookController {
 	return &EmailWebhookController{}
 }
 
+// isAllowedInboundRecipient verifies if the incoming recipient email belongs to a configured account or whitelist
+func isAllowedInboundRecipient(toEmail string, setting *models.EmailSetting) bool {
+	if setting == nil {
+		return false
+	}
+
+	target := strings.ToLower(strings.TrimSpace(toEmail))
+	if target == "" {
+		return false
+	}
+
+	// 1. Check default sender email account
+	if defaultEmail := strings.ToLower(strings.TrimSpace(setting.DefaultSenderEmail)); defaultEmail != "" {
+		if target == defaultEmail {
+			return true
+		}
+	}
+
+	// 2. Check all custom sender identity accounts
+	if setting.CustomSendersJSON != "" {
+		var senders []structs.SenderItem
+		if err := json.Unmarshal([]byte(setting.CustomSendersJSON), &senders); err == nil {
+			for _, s := range senders {
+				if s.Active && strings.ToLower(strings.TrimSpace(s.Email)) == target {
+					return true
+				}
+			}
+		}
+	}
+
+	// 3. Check allowed inbound accounts whitelist (comma-separated: akunA@arlab.my.id, akunB@arlab.my.id, etc.)
+	whitelist := strings.TrimSpace(setting.AllowedInboundEmails)
+	if whitelist != "" {
+		items := strings.Split(whitelist, ",")
+		for _, item := range items {
+			clean := strings.ToLower(strings.TrimSpace(item))
+			if clean == "" {
+				continue
+			}
+			if clean == "*" || clean == target {
+				return true
+			}
+			// Domain wildcard support e.g. @arlab.my.id
+			if strings.HasPrefix(clean, "@") && strings.HasSuffix(target, clean) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 func (ctrl *EmailWebhookController) HandleBrevoInbound(c *gin.Context) {
 	var payload structs.BrevoInboundWebhookPayload
 	if err := c.ShouldBindJSON(&payload); err != nil {
@@ -27,6 +81,10 @@ func (ctrl *EmailWebhookController) HandleBrevoInbound(c *gin.Context) {
 		return
 	}
 
+	var setting models.EmailSetting
+	config.DB.First(&setting)
+
+	processedCount := 0
 	for _, item := range payload.Items {
 		fromEmail := strings.TrimSpace(item.From.Address)
 		fromName := strings.TrimSpace(item.From.Name)
@@ -39,6 +97,12 @@ func (ctrl *EmailWebhookController) HandleBrevoInbound(c *gin.Context) {
 		if len(item.To) > 0 {
 			toEmail = strings.TrimSpace(item.To[0].Address)
 			toName = strings.TrimSpace(item.To[0].Name)
+		}
+
+		// Strict Account Check: Reject if not an active/allowed account
+		if !isAllowedInboundRecipient(toEmail, &setting) {
+			log.Printf("[Brevo Inbound REJECTED] Recipient %s is not registered in allowed accounts\n", toEmail)
+			continue
 		}
 
 		subject := strings.TrimSpace(item.Subject)
@@ -122,11 +186,12 @@ func (ctrl *EmailWebhookController) HandleBrevoInbound(c *gin.Context) {
 			IsTrash:   false,
 		}
 		config.DB.Create(&emailMsg)
+		processedCount++
 
-		log.Printf("[Brevo Inbound Email Processed] From: %s, Subject: %s, Thread ID: %d\n", fromEmail, subject, thread.ID)
+		log.Printf("[Brevo Inbound Email Processed] From: %s, To: %s, Subject: %s, Thread ID: %d\n", fromEmail, toEmail, subject, thread.ID)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "success", "processed_count": len(payload.Items)})
+	c.JSON(http.StatusOK, gin.H{"status": "success", "processed_count": processedCount})
 }
 
 func (ctrl *EmailWebhookController) HandleResendInbound(c *gin.Context) {
@@ -165,6 +230,17 @@ func (ctrl *EmailWebhookController) HandleResendInbound(c *gin.Context) {
 		}
 	}
 
+	// Fetch settings for account whitelist check
+	var setting models.EmailSetting
+	config.DB.First(&setting)
+
+	// Strict Account Check: Reject if not an active/allowed account
+	if !isAllowedInboundRecipient(toEmail, &setting) {
+		log.Printf("[Resend Inbound REJECTED] Recipient %s is not registered in allowed accounts/whitelist\n", toEmail)
+		c.JSON(http.StatusOK, gin.H{"status": "rejected", "reason": fmt.Sprintf("Alamat penerima %s tidak terdaftar di akun yang diizinkan", toEmail)})
+		return
+	}
+
 	subject := strings.TrimSpace(payload.Data.Subject)
 	if subject == "" {
 		subject = "(Tanpa Subjek)"
@@ -175,8 +251,6 @@ func (ctrl *EmailWebhookController) HandleResendInbound(c *gin.Context) {
 
 	// If body is empty, fetch full email via Resend API
 	if bodyHtml == "" && bodyText == "" && payload.Data.EmailID != "" {
-		var setting models.EmailSetting
-		config.DB.First(&setting)
 		if setting.ResendAPIKey != "" {
 			details, err := services.Email.FetchResendInboundEmail(c.Request.Context(), setting.ResendAPIKey, payload.Data.EmailID)
 			if err == nil && details != nil {

@@ -277,10 +277,10 @@ export function ContactClient({
                     Alamat Email Resmi
                   </div>
                   <a
-                    href="mailto:contact@syahril.dev"
+                    href={`mailto:${site?.contact_email || 'contact@arlab.my.id'}`}
                     className="text-sm font-semibold text-[var(--text-primary)] hover:text-lime-700 dark:hover:text-brand transition-colors truncate block"
                   >
-                    contact@syahril.dev
+                    {site?.contact_email || 'contact@arlab.my.id'}
                   </a>
                 </div>
               </div>
@@ -294,7 +294,7 @@ export function ContactClient({
                     Lokasi Domisili
                   </div>
                   <div className="text-sm font-semibold text-[var(--text-primary)]">
-                    Jakarta, Indonesia
+                    {site?.contact_location || 'Jakarta, Indonesia'}
                   </div>
                 </div>
               </div>

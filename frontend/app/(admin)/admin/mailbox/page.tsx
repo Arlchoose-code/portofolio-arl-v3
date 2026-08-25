@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { mailboxApi } from '@/lib/api';
-import { EmailThread, EmailMessage, EmailSetting, MailboxStats } from '@/types';
+import { EmailThread, EmailMessage, EmailSetting, MailboxStats, SenderItem } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
@@ -33,6 +33,12 @@ import {
   ArrowLeft,
   Eye,
   CornerDownRight,
+  Plus,
+  Check,
+  AtSign,
+  Globe,
+  Building2,
+  Tag,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -59,7 +65,7 @@ function AdminMailboxContent() {
     trash_count: 0,
   });
 
-  // Settings
+  // Settings & Multi-Sender
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [emailSetting, setEmailSetting] = useState<EmailSetting | null>(null);
   const [activeProvider, setActiveProvider] = useState<'hybrid' | 'brevo' | 'resend'>('hybrid');
@@ -67,11 +73,23 @@ function AdminMailboxContent() {
   const [resendApiKeyInput, setResendApiKeyInput] = useState('');
   const [senderEmailInput, setSenderEmailInput] = useState('');
   const [senderNameInput, setSenderNameInput] = useState('');
+  const [replyToEmailInput, setReplyToEmailInput] = useState('');
+  const [replyToNameInput, setReplyToNameInput] = useState('');
+  const [allowedInboundInput, setAllowedInboundInput] = useState('');
   const [inboundDomainInput, setInboundDomainInput] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
 
+  // Custom Senders Management
+  const [sendersList, setSendersList] = useState<SenderItem[]>([]);
+  const [newSenderName, setNewSenderName] = useState('');
+  const [newSenderEmail, setNewSenderEmail] = useState('');
+  const [syncingSenders, setSyncingSenders] = useState(false);
+
   // Compose Modal
   const [composeModalOpen, setComposeModalOpen] = useState(false);
+  const [selectedSenderEmail, setSelectedSenderEmail] = useState('');
+  const [selectedSenderName, setSelectedSenderName] = useState('');
+  const [composeReplyTo, setComposeReplyTo] = useState('');
   const [composeTo, setComposeTo] = useState('');
   const [composeToName, setComposeToName] = useState('');
   const [composeCc, setComposeCc] = useState('');
@@ -83,6 +101,8 @@ function AdminMailboxContent() {
 
   // Inline Reply
   const [replyBody, setReplyBody] = useState('');
+  const [replySenderEmail, setReplySenderEmail] = useState('');
+  const [replySenderName, setReplySenderName] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
 
   // Delete Confirmation
@@ -131,7 +151,32 @@ function AdminMailboxContent() {
         setActiveProvider(res.data.active_provider || 'hybrid');
         setSenderEmailInput(res.data.default_sender_email || '');
         setSenderNameInput(res.data.default_sender_name || '');
+        setReplyToEmailInput(res.data.reply_to_email || '');
+        setReplyToNameInput(res.data.reply_to_name || '');
+        setAllowedInboundInput(res.data.allowed_inbound_emails || '');
         setInboundDomainInput(res.data.inbound_domain || '');
+
+        if (res.data.custom_senders && res.data.custom_senders.length > 0) {
+          setSendersList(res.data.custom_senders);
+        } else {
+          setSendersList([
+            {
+              email: res.data.default_sender_email || 'contact@arlab.my.id',
+              name: res.data.default_sender_name || 'Syahril Haryono',
+              is_default: true,
+              active: true,
+            },
+          ]);
+        }
+
+        if (!selectedSenderEmail) {
+          setSelectedSenderEmail(res.data.default_sender_email || 'contact@arlab.my.id');
+          setSelectedSenderName(res.data.default_sender_name || 'Syahril Haryono');
+        }
+        if (!replySenderEmail) {
+          setReplySenderEmail(res.data.default_sender_email || 'contact@arlab.my.id');
+          setReplySenderName(res.data.default_sender_name || 'Syahril Haryono');
+        }
       }
     } catch {}
   };
@@ -203,7 +248,7 @@ function AdminMailboxContent() {
     try {
       const res = await mailboxApi.updateStatus(threadId, { is_trash: true });
       if (res.status) {
-        toast.success('Email dipindahkan ke Sampah.');
+        toast.success('Email dipindahkan ke sampah.');
         setThreads((prev) => prev.filter((t) => t.id !== threadId));
         if (selectedThread?.id === threadId) {
           setSelectedThread(null);
@@ -211,15 +256,16 @@ function AdminMailboxContent() {
         fetchStats();
       }
     } catch {
-      toast.error('Gagal memindahkan email ke sampah.');
+      toast.error('Gagal memindahkan ke sampah.');
     }
   };
 
-  const handleRestoreFromTrash = async (threadId: number) => {
+  const handleRestoreFromTrash = async (threadId: number, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     try {
       const res = await mailboxApi.updateStatus(threadId, { is_trash: false });
       if (res.status) {
-        toast.success('Email berhasil dipulihkan dari Sampah.');
+        toast.success('Email berhasil dipulihkan.');
         setThreads((prev) => prev.filter((t) => t.id !== threadId));
         if (selectedThread?.id === threadId) {
           setSelectedThread(null);
@@ -253,6 +299,77 @@ function AdminMailboxContent() {
     }
   };
 
+  const handleAddCustomSender = () => {
+    if (!newSenderEmail.trim() || !newSenderName.trim()) {
+      toast.error('Nama dan Email pengirim wajib diisi.');
+      return;
+    }
+    if (sendersList.some((s) => s.email.toLowerCase() === newSenderEmail.trim().toLowerCase())) {
+      toast.error('Email pengirim ini sudah ada dalam daftar.');
+      return;
+    }
+    const updated: SenderItem[] = [
+      ...sendersList,
+      {
+        email: newSenderEmail.trim(),
+        name: newSenderName.trim(),
+        is_default: sendersList.length === 0,
+        active: true,
+      },
+    ];
+    setSendersList(updated);
+    setNewSenderEmail('');
+    setNewSenderName('');
+    toast.success('Pengirim baru ditambahkan ke daftar.');
+  };
+
+  const handleSetDefaultSender = (email: string) => {
+    const updated = sendersList.map((s) => ({
+      ...s,
+      is_default: s.email === email,
+    }));
+    setSendersList(updated);
+    const def = sendersList.find((s) => s.email === email);
+    if (def) {
+      setSenderEmailInput(def.email);
+      setSenderNameInput(def.name);
+      toast.success(`Pengirim default diubah ke ${def.name} <${def.email}>`);
+    }
+  };
+
+  const handleDeleteCustomSender = (email: string) => {
+    if (sendersList.length <= 1) {
+      toast.error('Harus menyisakan minimal 1 pengirim.');
+      return;
+    }
+    const updated = sendersList.filter((s) => s.email !== email);
+    if (!updated.some((s) => s.is_default)) {
+      updated[0].is_default = true;
+      setSenderEmailInput(updated[0].email);
+      setSenderNameInput(updated[0].name);
+    }
+    setSendersList(updated);
+    toast.success('Pengirim dihapus dari daftar.');
+  };
+
+  const handleSyncBrevo = async () => {
+    setSyncingSenders(true);
+    try {
+      const res = await mailboxApi.syncBrevoSenders();
+      if (res.status && res.data) {
+        setSendersList(res.data.senders || []);
+        toast.success(res.message || 'Pengirim berhasil disinkronkan dari Brevo!');
+        fetchSettings();
+      } else {
+        toast.error(res.message || 'Gagal menyinkronkan pengirim dari Brevo.');
+      }
+    } catch {
+      toast.error('Gagal menghubungi API Brevo. Pastikan API key sudah disimpan.');
+    } finally {
+      setSyncingSenders(false);
+    }
+  };
+
   const handleSendCompose = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!composeTo.trim() || !composeSubject.trim() || !composeBody.trim()) {
@@ -263,6 +380,9 @@ function AdminMailboxContent() {
     setSendingEmail(true);
     try {
       const res = await mailboxApi.send({
+        sender_email: selectedSenderEmail.trim() || undefined,
+        sender_name: selectedSenderName.trim() || undefined,
+        reply_to_email: composeReplyTo.trim() || undefined,
         to_email: composeTo.trim(),
         to_name: composeToName.trim() || undefined,
         cc: composeCc.trim() || undefined,
@@ -273,12 +393,13 @@ function AdminMailboxContent() {
       });
 
       if (res.status) {
-        toast.success('Email berhasil dikirim via Brevo!');
+        toast.success(`Email berhasil dikirim sebagai ${selectedSenderEmail || 'pengirim default'}!`);
         setComposeModalOpen(false);
         setComposeTo('');
         setComposeToName('');
         setComposeCc('');
         setComposeBcc('');
+        setComposeReplyTo('');
         setComposeSubject('');
         setComposeBody('');
         fetchThreads();
@@ -304,12 +425,14 @@ function AdminMailboxContent() {
     try {
       const res = await mailboxApi.reply({
         thread_id: selectedThread.id,
+        sender_email: replySenderEmail.trim() || undefined,
+        sender_name: replySenderName.trim() || undefined,
         body_html: replyBody.trim(),
         body_text: replyBody.trim(),
       });
 
       if (res.status) {
-        toast.success('Balasan berhasil dikirim via Brevo!');
+        toast.success(`Balasan berhasil dikirim sebagai ${replySenderEmail || 'pengirim default'}!`);
         setReplyBody('');
         // Refresh thread to display newly sent message
         handleSelectThread(selectedThread);
@@ -334,11 +457,15 @@ function AdminMailboxContent() {
         resend_api_key: resendApiKeyInput.trim() || undefined,
         default_sender_email: senderEmailInput.trim() || undefined,
         default_sender_name: senderNameInput.trim() || undefined,
+        reply_to_email: replyToEmailInput.trim() || undefined,
+        reply_to_name: replyToNameInput.trim() || undefined,
+        custom_senders_json: JSON.stringify(sendersList),
+        allowed_inbound_emails: allowedInboundInput.trim() || undefined,
         inbound_domain: inboundDomainInput.trim() || undefined,
       });
 
       if (res.status) {
-        toast.success('Pengaturan email berhasil disimpan!');
+        toast.success('Pengaturan email & identitas pengirim berhasil disimpan!');
         setSettingsModalOpen(false);
         fetchSettings();
       } else {
@@ -849,9 +976,31 @@ function AdminMailboxContent() {
 
                 {/* Inline Quick Reply Box */}
                 <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-md space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-primary)]">
-                    <Reply className="w-4 h-4 text-lime-700 dark:text-brand" />
-                    <span>Kirim Balasan Langsung</span>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-primary)]">
+                      <Reply className="w-4 h-4 text-lime-700 dark:text-brand" />
+                      <span>Kirim Balasan Langsung</span>
+                    </div>
+
+                    {/* Sender Selector for Reply */}
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <span className="text-[11px] text-[var(--text-muted)] font-medium">Balas Sebagai:</span>
+                      <select
+                        value={replySenderEmail}
+                        onChange={(e) => {
+                          const chosen = sendersList.find((s) => s.email === e.target.value);
+                          setReplySenderEmail(e.target.value);
+                          if (chosen) setReplySenderName(chosen.name);
+                        }}
+                        className="px-2.5 py-1 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] text-[11px] font-semibold text-[var(--text-primary)] focus:outline-none focus:border-lime-500 transition-colors"
+                      >
+                        {sendersList.map((s, idx) => (
+                          <option key={idx} value={s.email}>
+                            {s.name} &lt;{s.email}&gt; {s.is_default ? '(Default)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
                   <form onSubmit={handleSendReply} className="space-y-3">
@@ -882,7 +1031,7 @@ function AdminMailboxContent() {
                           </>
                         ) : (
                           <>
-                            <span>Kirim Balasan via Brevo</span>
+                            <span>Kirim Balasan</span>
                             <Send className="w-3.5 h-3.5" />
                           </>
                         )}
@@ -938,6 +1087,38 @@ function AdminMailboxContent() {
 
               {/* Body Form */}
               <form onSubmit={handleSendCompose} className="p-6 space-y-4 overflow-y-auto flex-1">
+                {/* Sender Identity Selection */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-[var(--text-secondary)] flex items-center justify-between">
+                    <span>Kirim Sebagai (Identitas Pengirim) *</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setComposeModalOpen(false);
+                        setSettingsModalOpen(true);
+                      }}
+                      className="text-[10px] text-lime-700 dark:text-brand hover:underline"
+                    >
+                      + Kelola Pengirim di Pengaturan
+                    </button>
+                  </label>
+                  <select
+                    value={selectedSenderEmail}
+                    onChange={(e) => {
+                      const chosen = sendersList.find((s) => s.email === e.target.value);
+                      setSelectedSenderEmail(e.target.value);
+                      if (chosen) setSelectedSenderName(chosen.name);
+                    }}
+                    className="w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] text-xs font-semibold text-[var(--text-primary)] focus:outline-none focus:border-lime-500 transition-colors"
+                  >
+                    {sendersList.map((s, idx) => (
+                      <option key={idx} value={s.email}>
+                        {s.name} &lt;{s.email}&gt; {s.is_default ? '(Default)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-[var(--text-secondary)]">
@@ -961,7 +1142,7 @@ function AdminMailboxContent() {
                         onClick={() => setShowCcBcc(!showCcBcc)}
                         className="text-[10px] text-lime-700 dark:text-brand hover:underline"
                       >
-                        {showCcBcc ? 'Sembunyikan Cc/Bcc' : '+ Tambah Cc/Bcc'}
+                        {showCcBcc ? 'Sembunyikan Opsi Lanjutan' : '+ Opsi Lanjutan (Cc/Bcc/Reply-To)'}
                       </button>
                     </label>
                     <Input
@@ -974,22 +1155,35 @@ function AdminMailboxContent() {
                 </div>
 
                 {showCcBcc && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-[var(--text-secondary)]">Cc</label>
-                      <Input
-                        placeholder="cc1@example.com, cc2@example.com"
-                        value={composeCc}
-                        onChange={(e) => setComposeCc(e.target.value)}
-                        disabled={sendingEmail}
-                      />
+                  <div className="space-y-3 p-3.5 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]/50">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-[var(--text-secondary)]">Cc</label>
+                        <Input
+                          placeholder="cc1@example.com, cc2@example.com"
+                          value={composeCc}
+                          onChange={(e) => setComposeCc(e.target.value)}
+                          disabled={sendingEmail}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-[var(--text-secondary)]">Bcc</label>
+                        <Input
+                          placeholder="bcc@example.com"
+                          value={composeBcc}
+                          onChange={(e) => setComposeBcc(e.target.value)}
+                          disabled={sendingEmail}
+                        />
+                      </div>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-[var(--text-secondary)]">Bcc</label>
+                      <label className="text-xs font-semibold text-[var(--text-secondary)]">
+                        Reply-To Khusus (Opsional)
+                      </label>
                       <Input
-                        placeholder="bcc@example.com"
-                        value={composeBcc}
-                        onChange={(e) => setComposeBcc(e.target.value)}
+                        placeholder="replyto@arlab.my.id"
+                        value={composeReplyTo}
+                        onChange={(e) => setComposeReplyTo(e.target.value)}
                         disabled={sendingEmail}
                       />
                     </div>
@@ -1039,12 +1233,12 @@ function AdminMailboxContent() {
                     {sendingEmail ? (
                       <>
                         <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        <span>Mengirim via Brevo...</span>
+                        <span>Mengirim...</span>
                       </>
                     ) : (
                       <>
                         <span>Kirim Email</span>
-                        <Send className="w-4 h-4" />
+                        <Send className="w-3.5 h-3.5" />
                       </>
                     )}
                   </Button>
@@ -1055,7 +1249,7 @@ function AdminMailboxContent() {
         )}
       </AnimatePresence>
 
-      {/* Brevo Settings Modal Dialog */}
+      {/* Email & Multi-Sender Settings Modal Dialog */}
       <AnimatePresence>
         {settingsModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -1063,7 +1257,7 @@ function AdminMailboxContent() {
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="w-full max-w-lg rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-2xl overflow-hidden flex flex-col"
+              className="w-full max-w-2xl rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] bg-[var(--bg-elevated)]/60">
                 <div className="flex items-center gap-2.5">
@@ -1072,10 +1266,10 @@ function AdminMailboxContent() {
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-[var(--text-primary)]">
-                      Pengaturan Email (Hybrid Brevo + Resend)
+                      Pengaturan Email, Multi-Sender &amp; Akun Masuk
                     </h3>
                     <p className="text-[10px] text-[var(--text-muted)]">
-                      Gabungkan kuota kirim 400/hari & terima email masuk gratis via Resend Inbound.
+                      Kelola identitas pengirim, akun penerima (inbound filter), dan API provider email.
                     </p>
                   </div>
                 </div>
@@ -1089,7 +1283,7 @@ function AdminMailboxContent() {
                 </button>
               </div>
 
-              <form onSubmit={handleSaveSettings} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+              <form onSubmit={handleSaveSettings} className="p-6 space-y-5 overflow-y-auto flex-1">
                 {/* Mode Provider Selection */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-[var(--text-secondary)] flex items-center gap-1.5">
@@ -1138,72 +1332,198 @@ function AdminMailboxContent() {
                   </div>
                 </div>
 
-                {/* Brevo API Key */}
-                <div className="space-y-1.5 pt-2 border-t border-[var(--border)]">
-                  <label className="text-xs font-semibold text-[var(--text-secondary)] flex items-center justify-between">
-                    <span>Brevo API Key (v3)</span>
-                    {emailSetting?.brevo_api_key_masked && (
-                      <span className="text-[10px] font-mono text-[var(--text-muted)]">
-                        Aktif: {emailSetting.brevo_api_key_masked}
-                      </span>
-                    )}
+                {/* API Keys */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[var(--border)]">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-[var(--text-secondary)] flex items-center justify-between">
+                      <span>Brevo API Key (v3)</span>
+                      {emailSetting?.brevo_api_key_masked && (
+                        <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                          {emailSetting.brevo_api_key_masked}
+                        </span>
+                      )}
+                    </label>
+                    <Input
+                      type="password"
+                      placeholder="xkeysib-xxxxxxxxxxxxxxxxxxxxxxxx"
+                      value={apiKeyInput}
+                      onChange={(e) => setApiKeyInput(e.target.value)}
+                      disabled={savingSettings}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-[var(--text-secondary)] flex items-center justify-between">
+                      <span>Resend API Key</span>
+                      {emailSetting?.resend_api_key_masked && (
+                        <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                          {emailSetting.resend_api_key_masked}
+                        </span>
+                      )}
+                    </label>
+                    <Input
+                      type="password"
+                      placeholder="re_xxxxxxxxxxxxxxxxxxxxxxxx"
+                      value={resendApiKeyInput}
+                      onChange={(e) => setResendApiKeyInput(e.target.value)}
+                      disabled={savingSettings}
+                    />
+                  </div>
+                </div>
+
+                {/* Multi-Sender Identities Management */}
+                <div className="space-y-3 pt-2 border-t border-[var(--border)]">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <label className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-lime-700 dark:text-brand" />
+                        <span>Daftar Identitas Pengirim (Senders)</span>
+                      </label>
+                      <p className="text-[10px] text-[var(--text-muted)]">
+                        Pilih identitas mana yang digunakan saat mengirim atau membalas email.
+                      </p>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSyncBrevo}
+                      disabled={syncingSenders || savingSettings}
+                      className="gap-1.5 text-xs py-1 h-7"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${syncingSenders ? 'animate-spin' : ''}`} />
+                      <span>{syncingSenders ? 'Menyinkronkan...' : 'Sinkronkan dari Brevo'}</span>
+                    </Button>
+                  </div>
+
+                  {/* Senders List */}
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {sendersList.map((sender, idx) => (
+                      <div
+                        key={idx}
+                        className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
+                          sender.is_default
+                            ? 'border-lime-500/50 bg-lime-500/5 dark:border-brand/40 dark:bg-brand/5'
+                            : 'border-[var(--border)] bg-[var(--bg-elevated)]/60'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-[var(--bg-surface)] flex items-center justify-center font-bold text-xs text-lime-700 dark:text-brand border border-[var(--border)]">
+                            {sender.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="truncate">
+                            <div className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+                              <span>{sender.name}</span>
+                              {sender.is_default && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-500/20 text-lime-700 dark:text-brand">
+                                  Default
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] font-mono text-[var(--text-muted)] truncate">
+                              {sender.email}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                          {!sender.is_default && (
+                            <button
+                              type="button"
+                              onClick={() => handleSetDefaultSender(sender.email)}
+                              className="px-2 py-1 rounded-lg text-[10px] font-semibold text-[var(--text-secondary)] hover:text-lime-700 dark:hover:text-brand hover:bg-[var(--accent-soft)] transition-colors"
+                            >
+                              Jadikan Default
+                            </button>
+                          )}
+                          {sendersList.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCustomSender(sender.email)}
+                              className="p-1 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors"
+                              title="Hapus Pengirim"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Add New Sender Form */}
+                  <div className="p-3 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]/40 space-y-2">
+                    <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
+                      + Tambah Identitas / Akun Pengirim Baru:
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                      <Input
+                        placeholder="Nama (misal: Syahril Support)"
+                        value={newSenderName}
+                        onChange={(e) => setNewSenderName(e.target.value)}
+                        className="sm:col-span-2 text-xs"
+                      />
+                      <Input
+                        type="email"
+                        placeholder="support@arlab.my.id"
+                        value={newSenderEmail}
+                        onChange={(e) => setNewSenderEmail(e.target.value)}
+                        className="sm:col-span-2 text-xs"
+                      />
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={handleAddCustomSender}
+                        className="sm:col-span-1 text-xs font-bold"
+                      >
+                        Tambah
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Allowed Inbound Recipient Accounts (Filter Masuk) */}
+                <div className="space-y-2 pt-2 border-t border-[var(--border)]">
+                  <label className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5 text-lime-700 dark:text-brand" />
+                    <span>Akun / Alamat Penerima yang Diizinkan Masuk (Inbound Whitelist)</span>
                   </label>
                   <Input
-                    type="password"
-                    placeholder="xkeysib-xxxxxxxxxxxxxxxxxxxxxxxx"
-                    value={apiKeyInput}
-                    onChange={(e) => setApiKeyInput(e.target.value)}
+                    placeholder="contact@arlab.my.id, syahril@arlab.my.id, admin@arlab.my.id"
+                    value={allowedInboundInput}
+                    onChange={(e) => setAllowedInboundInput(e.target.value)}
                     disabled={savingSettings}
                   />
-                  <p className="text-[10px] text-[var(--text-muted)]">
-                    Kunci dari menu <strong>SMTP & API &gt; tab API Keys</strong> di Brevo (diawali <code>xkeysib-...</code>).
+                  <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+                    💡 Pisahkan dengan koma jika ada beberapa akun (misal: <code>contact@arlab.my.id, syahril@arlab.my.id, info@arlab.my.id</code>).
+                    <br />
+                    🔒 <strong>Sistem Keamanan:</strong> Email yang masuk ke alamat di luar akun terdaftar akan <strong>otomatis ditolak</strong> untuk mencegah spam alamat acak.
                   </p>
                 </div>
 
-                {/* Resend API Key */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-[var(--text-secondary)] flex items-center justify-between">
-                    <span>Resend API Key</span>
-                    {emailSetting?.resend_api_key_masked && (
-                      <span className="text-[10px] font-mono text-[var(--text-muted)]">
-                        Aktif: {emailSetting.resend_api_key_masked}
-                      </span>
-                    )}
-                  </label>
-                  <Input
-                    type="password"
-                    placeholder="re_xxxxxxxxxxxxxxxxxxxxxxxx"
-                    value={resendApiKeyInput}
-                    onChange={(e) => setResendApiKeyInput(e.target.value)}
-                    disabled={savingSettings}
-                  />
-                  <p className="text-[10px] text-[var(--text-muted)]">
-                    Dapatkan di <strong>resend.com/api-keys</strong> (diawali <code>re_...</code>).
-                  </p>
-                </div>
-
-                {/* Sender Identity */}
+                {/* Reply-To Defaults */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[var(--border)]">
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-[var(--text-secondary)]">
-                      Default Sender Email
+                      Default Reply-To Email
                     </label>
                     <Input
                       placeholder="contact@arlab.my.id"
-                      value={senderEmailInput}
-                      onChange={(e) => setSenderEmailInput(e.target.value)}
+                      value={replyToEmailInput}
+                      onChange={(e) => setReplyToEmailInput(e.target.value)}
                       disabled={savingSettings}
                     />
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-[var(--text-secondary)]">
-                      Default Sender Name
+                      Default Reply-To Name
                     </label>
                     <Input
                       placeholder="Syahril Haryono"
-                      value={senderNameInput}
-                      onChange={(e) => setSenderNameInput(e.target.value)}
+                      value={replyToNameInput}
+                      onChange={(e) => setReplyToNameInput(e.target.value)}
                       disabled={savingSettings}
                     />
                   </div>
@@ -1212,23 +1532,20 @@ function AdminMailboxContent() {
                 {/* DNS Setup Guide Card */}
                 <div className="p-3.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)] text-[11px] text-[var(--text-secondary)] space-y-2 leading-relaxed">
                   <div className="font-bold text-[var(--text-primary)] flex items-center gap-1.5">
-                    <Shield className="w-3.5 h-3.5 text-lime-700 dark:text-brand" />
-                    <span>Panduan DNS Resend Inbound (Terima Email 100% Gratis)</span>
+                    <Globe className="w-3.5 h-3.5 text-lime-700 dark:text-brand" />
+                    <span>Konfigurasi DNS Resend Inbound &amp; SPF Record</span>
                   </div>
 
                   <div className="space-y-1 text-[10px] font-mono">
                     <div>
                       <strong>1. Webhook Inbound Resend:</strong>
                       <code className="block text-lime-700 dark:text-brand bg-[var(--bg-surface)] p-1.5 rounded mt-0.5 break-all">
-                        https://domain-anda.com/api/public/webhooks/resend/inbound
+                        https://arlab.my.id/api/public/webhooks/resend/inbound
                       </code>
                     </div>
 
                     <div>
                       <strong>2. MX Record Domain (Penerima):</strong>
-                      <div className="text-[var(--text-muted)] font-sans text-[10px]">
-                        Tambahkan MX record di DNS domain Anda:
-                      </div>
                       <code className="block bg-[var(--bg-surface)] p-1.5 rounded mt-0.5">
                         Type: MX | Host: @ | Priority: 10 | Value: feedback-smtp.us-east-1.amazonses.com
                       </code>
