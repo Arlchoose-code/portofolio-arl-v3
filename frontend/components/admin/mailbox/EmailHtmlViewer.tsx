@@ -122,15 +122,16 @@ export function EmailHtmlViewer({
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <base target="_blank">
   <style>
-    body {
+    html, body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       font-size: 13px;
       line-height: 1.6;
       color: #1e293b;
       margin: 0;
-      padding: 4px;
+      padding: 8px 4px;
       word-wrap: break-word;
       overflow-wrap: break-word;
+      overflow: hidden !important;
     }
     @media (prefers-color-scheme: dark) {
       body {
@@ -171,13 +172,27 @@ export function EmailHtmlViewer({
   ${contentToDisplay || '<p style="color: #94a3b8; font-style: italic;">(Isi email kosong)</p>'}
   <script>
     function updateHeight() {
-      const height = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
-      window.parent.postMessage({ type: 'SET_IFRAME_HEIGHT', height: height + 20 }, '*');
+      const body = document.body;
+      const html = document.documentElement;
+      const height = Math.max(
+        body ? body.scrollHeight : 0,
+        body ? body.offsetHeight : 0,
+        html ? html.scrollHeight : 0,
+        html ? html.offsetHeight : 0
+      );
+      if (height > 0) {
+        window.parent.postMessage({ type: 'SET_IFRAME_HEIGHT', height: height + 25 }, '*');
+      }
     }
     window.addEventListener('load', updateHeight);
     window.addEventListener('resize', updateHeight);
-    setTimeout(updateHeight, 300);
-    setTimeout(updateHeight, 1500);
+    if (window.ResizeObserver && document.body) {
+      new ResizeObserver(updateHeight).observe(document.body);
+    }
+    if (document.readyState === 'complete') updateHeight();
+    setTimeout(updateHeight, 100);
+    setTimeout(updateHeight, 400);
+    setTimeout(updateHeight, 1200);
   </script>
 </body>
 </html>`;
@@ -262,8 +277,9 @@ export function EmailHtmlViewer({
           ref={iframeRef}
           srcDoc={sandboxedSrcDoc}
           sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
-          className="w-full border-0 rounded-lg transition-all"
-          style={{ height: iframeHeight, minHeight: '80px' }}
+          scrolling="no"
+          className="w-full border-0 rounded-lg transition-all overflow-hidden"
+          style={{ height: iframeHeight, minHeight: '60px' }}
           title="Isi Pesan Email"
         />
       </div>
