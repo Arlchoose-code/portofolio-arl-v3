@@ -6,6 +6,7 @@ import { MediaLibrary } from './MediaLibrary';
 import { Button } from '@/components/ui/Button';
 import { Image as ImageIcon, Trash2, Copy, Check, FileText, UploadCloud, Link as LinkIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { getMediaUrl, getAbsoluteMediaUrl } from '@/lib/utils';
 
 interface ImageUploadFieldProps {
   label?: string;
@@ -40,7 +41,7 @@ export function ImageUploadField({
   };
 
   const copyToClipboard = (text: string, label: string) => {
-    const full = text.startsWith('http') ? text : `http://localhost:8080${text}`;
+    const full = getAbsoluteMediaUrl(text);
     navigator.clipboard.writeText(full);
     setCopiedUrl(label);
     toast.success(`URL ${label} disalin`);
@@ -48,7 +49,7 @@ export function ImageUploadField({
   };
 
   const isPdf = Boolean(value && value.toLowerCase().endsWith('.pdf'));
-  const previewSrc = value.startsWith('http') ? value : `http://localhost:8080${value}`;
+  const previewSrc = getMediaUrl(value);
 
   return (
     <div className="space-y-2">

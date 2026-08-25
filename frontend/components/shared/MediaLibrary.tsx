@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Image as ImageIcon, UploadCloud, X, Trash2, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { getMediaUrl } from '@/lib/utils';
 
 interface MediaLibraryProps {
   open: boolean;
@@ -170,7 +171,7 @@ export function MediaLibrary({ open, onSelect, onClose }: MediaLibraryProps) {
                       }`}
                     >
                       <img
-                        src={`http://localhost:8080${media.thumbnail_url || media.original_url}`}
+                        src={getMediaUrl(media.thumbnail_url || media.original_url)}
                         alt={media.original_name}
                         className="w-full h-full object-cover"
                       />

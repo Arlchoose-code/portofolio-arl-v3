@@ -16,6 +16,7 @@ import {
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
 import { Pagination } from '@/components/shared/Pagination';
+import { getMediaUrl } from '@/lib/utils';
 
 interface FeaturedProjectsSectionProps {
   projects: Project[];
@@ -83,7 +84,7 @@ function TiltCard({ project }: { project: Project }) {
         <div className="relative aspect-video w-full overflow-hidden bg-[var(--bg-elevated)] border-b border-[var(--border)]">
           {mainImage ? (
             <img
-              src={mainImage.startsWith('http') ? mainImage : `http://localhost:8080${mainImage}`}
+              src={getMediaUrl(mainImage)}
               alt={project.title}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             />

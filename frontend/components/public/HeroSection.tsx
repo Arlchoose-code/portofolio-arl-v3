@@ -22,6 +22,7 @@ import {
 import Link from 'next/link';
 import { settingsApi } from '@/lib/api';
 import { SkillCategory } from '@/types';
+import { getMediaUrl } from '@/lib/utils';
 
 interface HeroSectionProps {
   stats?: {
@@ -281,9 +282,7 @@ export function HeroSection({ stats, initialPhotoUrl, skills = [] }: HeroSection
   const effectivePhoto =
     profilePhotoUrl || '/storage/media/originals/1740333796_about_profile.jpg';
 
-  const fullPhotoUrl = effectivePhoto.startsWith('http')
-    ? effectivePhoto
-    : `http://localhost:8080${effectivePhoto}`;
+  const fullPhotoUrl = getMediaUrl(effectivePhoto);
 
   const handleScrollDown = (e: React.MouseEvent) => {
     e.preventDefault();

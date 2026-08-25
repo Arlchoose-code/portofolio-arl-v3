@@ -6,6 +6,7 @@ import { notFound } from 'next/navigation';
 import { Github, ExternalLink, ArrowLeft, Calendar, Tag } from 'lucide-react';
 import Link from 'next/link';
 import { Metadata } from 'next';
+import { getMediaUrl, getAbsoluteMediaUrl } from '@/lib/utils';
 
 interface ProjectDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -23,9 +24,7 @@ export async function generateMetadata({ params }: ProjectDetailPageProps): Prom
   const title = `${project.title} | Syahril Haryono`;
   const description = project.short_description || project.title;
   const ogImageUrl = project.images?.[0]?.original_url
-    ? project.images[0].original_url.startsWith('http')
-      ? project.images[0].original_url
-      : `http://localhost:8080${project.images[0].original_url}`
+    ? getAbsoluteMediaUrl(project.images[0].original_url)
     : undefined;
 
   return {
@@ -127,7 +126,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
         <div className="space-y-6">
           <CurtainReveal className="aspect-video w-full rounded-2xl overflow-hidden bg-[var(--bg-elevated)] border border-[var(--border)]">
             <img
-              src={`http://localhost:8080${project.images[0].original_url || project.images[0].medium_url}`}
+              src={getMediaUrl(project.images[0].original_url || project.images[0].medium_url)}
               alt={project.title}
               className="w-full h-full object-cover"
             />
@@ -141,7 +140,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                   className="aspect-video rounded-xl overflow-hidden border border-[var(--border)] bg-[var(--bg-elevated)]"
                 >
                   <img
-                    src={`http://localhost:8080${img.medium_url || img.thumbnail_url}`}
+                    src={getMediaUrl(img.medium_url || img.thumbnail_url)}
                     alt={img.caption || project.title}
                     className="w-full h-full object-cover"
                   />

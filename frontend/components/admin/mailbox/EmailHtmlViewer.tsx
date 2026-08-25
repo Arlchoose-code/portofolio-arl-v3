@@ -44,6 +44,19 @@ export function EmailHtmlViewer({
   const [previewMedia, setPreviewMedia] = useState<EmailAttachment | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [iframeHeight, setIframeHeight] = useState('150px');
+  const [isDark, setIsDark] = useState(false);
+
+  // Sync theme with parent app
+  useEffect(() => {
+    const checkDark = () => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    };
+    checkDark();
+
+    const observer = new MutationObserver(checkDark);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   // Parse List-Unsubscribe from headers
   useEffect(() => {
@@ -69,12 +82,12 @@ export function EmailHtmlViewer({
 
   // Split Main Body from Quoted Reply History
   const { mainContent, quotedContent, hasQuote } = React.useMemo(() => {
-    const raw = html || text || '';
+    const raw = html || (text ? text.replace(/\n/g, '<br>') : '');
     if (!raw) return { mainContent: '', quotedContent: '', hasQuote: false };
 
     // Check for gmail_quote
     if (raw.includes('class="gmail_quote"') || raw.includes("class='gmail_quote'")) {
-      const parts = raw.split(/<div\s+class=["']gmail_quote["']/i);
+      const parts = raw.split(/<div[^>]*class=["']gmail_quote["'][^>]*>/i);
       if (parts.length > 1) {
         return {
           mainContent: parts[0],
@@ -113,7 +126,7 @@ export function EmailHtmlViewer({
   }, [html, text]);
 
   // Prepare safe sandboxed HTML for iframe
-  const contentToDisplay = showQuoted ? `${mainContent}${quotedContent ? `<hr style="margin: 16px 0; border: none; border-top: 1px dashed #cbd5e1;" /><div style="border-left: 2px solid #94a3b8; padding-left: 12px; margin-top: 12px; color: #64748b; font-size: 12px;">${quotedContent}</div>` : ''}` : mainContent;
+  const contentToDisplay = showQuoted ? `${mainContent}${quotedContent ? `<hr style="margin: 16px 0; border: none; border-top: 1px dashed ${isDark ? '#475569' : '#cbd5e1'};" /><div style="border-left: 2px solid ${isDark ? '#64748b' : '#94a3b8'}; padding-left: 12px; margin-top: 12px; color: ${isDark ? '#94a3b8' : '#64748b'}; font-size: 12px;">${quotedContent}</div>` : ''}` : mainContent;
 
   const sandboxedSrcDoc = `<!DOCTYPE html>
 <html>
@@ -126,20 +139,13 @@ export function EmailHtmlViewer({
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       font-size: 13px;
       line-height: 1.6;
-      color: #1e293b;
+      color: ${isDark ? '#f1f5f9' : '#0f172a'};
+      background: transparent;
       margin: 0;
       padding: 8px 4px;
       word-wrap: break-word;
       overflow-wrap: break-word;
       overflow: hidden !important;
-    }
-    @media (prefers-color-scheme: dark) {
-      body {
-        color: #e2e8f0;
-      }
-      a {
-        color: #84cc16 !important;
-      }
     }
     img {
       max-width: 100% !important;
@@ -147,7 +153,7 @@ export function EmailHtmlViewer({
       border-radius: 6px;
     }
     a {
-      color: #4d7c0f;
+      color: ${isDark ? '#a3e635' : '#4d7c0f'} !important;
       text-decoration: underline;
     }
     table {
@@ -156,21 +162,22 @@ export function EmailHtmlViewer({
     pre, code {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 12px;
-      background: rgba(100, 116, 139, 0.1);
+      background: ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)'};
+      color: ${isDark ? '#f1f5f9' : '#0f172a'};
       border-radius: 4px;
       padding: 2px 4px;
     }
     blockquote {
       margin: 8px 0;
       padding-left: 12px;
-      border-left: 2px solid #cbd5e1;
-      color: #64748b;
+      border-left: 3px solid ${isDark ? '#475569' : '#cbd5e1'};
+      color: ${isDark ? '#94a3b8' : '#64748b'};
     }
   </style>
 </head>
 <body>
-  <div id="email-content-wrapper" style="box-sizing: border-box; padding: 4px; margin: 0; min-height: 20px;">
-    ${contentToDisplay || '<p style="color: #94a3b8; font-style: italic;">(Isi email kosong)</p>'}
+  <div id="email-content-wrapper" style="box-sizing: border-box; padding: 4px; margin: 0; min-height: 20px; color: ${isDark ? '#f1f5f9' : '#0f172a'};">
+    ${contentToDisplay || `<p style="color: ${isDark ? '#94a3b8' : '#64748b'}; font-style: italic;">(Isi email kosong)</p>`}
   </div>
   <script>
     var lastSentHeight = 0;

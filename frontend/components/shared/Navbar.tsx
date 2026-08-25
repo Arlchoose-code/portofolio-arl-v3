@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeToggle } from './ThemeToggle';
 import { Menu, X, ArrowUpRight, Code2, User, Wrench, Send, ChevronRight, Sparkles } from 'lucide-react';
 import { settingsApi } from '@/lib/api';
+import { getMediaUrl } from '@/lib/utils';
 
 const navLinks = [
   {
@@ -130,7 +131,7 @@ export function Navbar() {
           >
             {logoUrl && (
               <img
-                src={logoUrl.startsWith('http') ? logoUrl : `http://localhost:8080${logoUrl}`}
+                src={getMediaUrl(logoUrl)}
                 alt={brandName}
                 className="w-10 h-10 object-contain rounded-xl shrink-0 shadow-sm border border-[var(--border)] p-1 bg-[var(--bg-surface)]"
               />
@@ -215,7 +216,7 @@ export function Navbar() {
                 >
                   {logoUrl && (
                     <img
-                      src={logoUrl.startsWith('http') ? logoUrl : `http://localhost:8080${logoUrl}`}
+                      src={getMediaUrl(logoUrl)}
                       alt={brandName}
                       className="w-8 h-8 object-contain rounded-lg p-0.5 bg-[var(--bg-surface)] border border-[var(--border)]"
                     />

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -239,7 +240,30 @@ func (ctrl *AuthController) ForgotPassword(c *gin.Context) {
 	var setting models.EmailSetting
 	config.DB.First(&setting)
 
-	resetLink := fmt.Sprintf("http://localhost:3000/admin/reset-password?token=%s", resetTokenStr)
+	// Dynamically determine base frontend URL from request or environment
+	frontendBase := strings.TrimRight(c.GetHeader("Origin"), "/")
+	if frontendBase == "" {
+		if envFrontend := strings.TrimRight(os.Getenv("FRONTEND_URL"), "/"); envFrontend != "" {
+			frontendBase = envFrontend
+		} else if proto := c.GetHeader("X-Forwarded-Proto"); proto != "" {
+			host := c.GetHeader("X-Forwarded-Host")
+			if host == "" {
+				host = c.Request.Host
+			}
+			if host != "" {
+				frontendBase = fmt.Sprintf("%s://%s", proto, host)
+			}
+		}
+	}
+	if frontendBase == "" {
+		if ctrl.cfg != nil && ctrl.cfg.Revalidation.NextjsURL != "" {
+			frontendBase = strings.TrimRight(ctrl.cfg.Revalidation.NextjsURL, "/")
+		} else {
+			frontendBase = "https://arlab.my.id"
+		}
+	}
+
+	resetLink := fmt.Sprintf("%s/admin/reset-password?token=%s", frontendBase, resetTokenStr)
 
 	// Send password reset email via Brevo
 	_ = services.Email.SendPasswordResetEmail(c.Request.Context(), &setting, user.Email, user.Name, resetLink)

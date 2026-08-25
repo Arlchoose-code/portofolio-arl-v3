@@ -11,6 +11,7 @@ import { SocialIcon, availableSocialIcons } from '@/components/shared/SocialIcon
 import { Save, Plus, Trash2, Globe, Share2, Search, Check, Layers, ExternalLink, Sparkles, Image as ImageIcon, Shield } from 'lucide-react';
 import { cleanMetaTitle } from '@/lib/seo-utils';
 import { toast } from 'sonner';
+import { getMediaUrl } from '@/lib/utils';
 
 const publicPagesList = [
   {
@@ -915,7 +916,7 @@ export default function AdminSettingsPage() {
                   {effectiveOgImage && !ogImageUrl && (
                     <div className="flex items-center gap-3 p-3 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]">
                       <img
-                        src={effectiveOgImage.startsWith('http') ? effectiveOgImage : `http://localhost:8080${effectiveOgImage}`}
+                        src={getMediaUrl(effectiveOgImage)}
                         alt="Fallback OG"
                         className="w-12 h-12 object-cover rounded-lg border border-[var(--border)]"
                       />

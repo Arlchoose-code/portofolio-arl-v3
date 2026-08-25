@@ -11,6 +11,7 @@ import Highlight from '@tiptap/extension-highlight';
 import { MediaLibrary } from './MediaLibrary';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { getMediaUrl } from '@/lib/utils';
 import {
   Bold,
   Italic,
@@ -85,7 +86,7 @@ export function RichEditor({ value, onChange, placeholder = 'Tulis konten di sin
   };
 
   const handleSelectMedia = (media: any) => {
-    const imageUrl = `http://localhost:8080${media.medium_url || media.original_url}`;
+    const imageUrl = getMediaUrl(media.medium_url || media.original_url);
     editor.chain().focus().setImage({ src: imageUrl, alt: media.original_name }).run();
   };
 

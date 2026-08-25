@@ -14,6 +14,8 @@ interface BreadcrumbProps {
 }
 
 export function BreadcrumbWithJsonLD({ items }: BreadcrumbProps) {
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://arlab.my.id').replace(/\/+$/, '');
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -22,13 +24,13 @@ export function BreadcrumbWithJsonLD({ items }: BreadcrumbProps) {
         '@type': 'ListItem',
         position: 1,
         name: 'Home',
-        item: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+        item: siteUrl,
       },
       ...items.map((item, index) => ({
         '@type': 'ListItem',
         position: index + 2,
         name: item.name,
-        item: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}${item.url}`,
+        item: `${siteUrl}${item.url.startsWith('/') ? item.url : `/${item.url}`}`,
       })),
     ],
   };

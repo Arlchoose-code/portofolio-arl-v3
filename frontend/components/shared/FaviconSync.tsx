@@ -2,12 +2,13 @@
 
 import { useEffect } from 'react';
 import { settingsApi } from '@/lib/api';
+import { getMediaUrl } from '@/lib/utils';
 
 export function FaviconSync() {
   useEffect(() => {
     const updateFavicon = (url: string) => {
       if (!url) return;
-      const fullUrl = url.startsWith('http') ? url : `http://localhost:8080${url}`;
+      const fullUrl = getMediaUrl(url);
 
       // Update or create standard icon links
       const rels = ['icon', 'shortcut icon', 'apple-touch-icon'];

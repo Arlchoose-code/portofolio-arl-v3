@@ -7,6 +7,7 @@ import { SocialIcon } from './SocialIcon';
 import { ArrowUpRight } from 'lucide-react';
 import { settingsApi } from '@/lib/api';
 import { SocialLink, SiteSetting } from '@/types';
+import { getMediaUrl } from '@/lib/utils';
 
 export function Footer() {
   const [site, setSite] = useState<SiteSetting | null>(null);
@@ -53,7 +54,7 @@ export function Footer() {
           >
             {site?.logo_url && (
               <img
-                src={site.logo_url.startsWith('http') ? site.logo_url : `http://localhost:8080${site.logo_url}`}
+                src={getMediaUrl(site.logo_url)}
                 alt={brandName}
                 className="w-10 h-10 object-contain rounded-xl shrink-0 shadow-sm border border-[var(--border)] p-1 bg-[var(--bg-surface)]"
               />
@@ -137,11 +138,6 @@ export function Footer() {
           <span className="opacity-30">•</span>
           <Link href="/terms" className="hover:text-lime-700 dark:hover:text-brand transition-colors font-medium">
             Syarat & Ketentuan
-          </Link>
-          <span className="opacity-30">•</span>
-          <Link href="/admin/login" className="hover:text-lime-700 dark:hover:text-brand transition-colors flex items-center gap-1 font-medium">
-            <span>Admin Portal</span>
-            <ArrowUpRight className="w-3 h-3" />
           </Link>
         </div>
       </div>

@@ -20,6 +20,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
 import { Pagination } from '@/components/shared/Pagination';
+import { getMediaUrl } from '@/lib/utils';
 
 interface CertificatesSectionProps {
   certificates: Certificate[];
@@ -275,7 +276,7 @@ export function CertificatesSection({
                         ) : (
                           <>
                             <img
-                              src={fileUrl?.startsWith('http') ? fileUrl : `http://localhost:8080${fileUrl}`}
+                              src={getMediaUrl(fileUrl)}
                               alt={cert.name}
                               className="w-full h-full object-cover group-hover/thumb:scale-105 transition-transform duration-300"
                             />
@@ -413,7 +414,7 @@ export function CertificatesSection({
                     );
                   }
 
-                  const fullUrl = url.startsWith('http') ? url : `http://localhost:8080${url}`;
+                  const fullUrl = getMediaUrl(url);
 
                   if (isPdf(url)) {
                     return (

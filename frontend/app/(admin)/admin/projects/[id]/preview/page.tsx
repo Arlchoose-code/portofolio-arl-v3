@@ -7,6 +7,7 @@ import { Project } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { ArrowLeft, ExternalLink, Github, Tag } from 'lucide-react';
 import Link from 'next/link';
+import { getMediaUrl } from '@/lib/utils';
 
 export default function PreviewProjectPage() {
   const params = useParams();
@@ -65,7 +66,7 @@ export default function PreviewProjectPage() {
         {project.images && project.images.length > 0 && (
           <div className="aspect-video w-full rounded-xl overflow-hidden bg-[var(--bg-elevated)]">
             <img
-              src={`http://localhost:8080${project.images[0].original_url || project.images[0].medium_url}`}
+              src={getMediaUrl(project.images[0].original_url || project.images[0].medium_url)}
               alt={project.title}
               className="w-full h-full object-cover"
             />

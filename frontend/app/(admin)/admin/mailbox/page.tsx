@@ -972,11 +972,12 @@ function AdminMailboxContent() {
                     variant="outline"
                     size="sm"
                     onClick={() => setSelectedThread(null)}
-                    className="h-8 px-3 text-xs gap-1.5 font-bold shadow-xs hover:bg-[var(--accent-soft)]"
+                    className="h-8 px-2.5 sm:px-3 text-xs gap-1.5 font-bold shadow-xs hover:bg-[var(--accent-soft)] shrink-0"
                     title="Kembali ke Kotak Masuk"
                   >
                     <ArrowLeft className="w-4 h-4 text-lime-700 dark:text-brand" />
-                    <span>Kembali ke Kotak Masuk</span>
+                    <span className="hidden sm:inline">Kembali ke Kotak Masuk</span>
+                    <span className="sm:hidden">Kembali</span>
                   </Button>
 
                   <div className="h-4 w-[1px] bg-[var(--border)] mx-1" />
@@ -1343,17 +1344,129 @@ function AdminMailboxContent() {
             /* VIEW 2: FULL-WIDTH GMAIL INBOX LIST VIEW                                  */
             /* ========================================================================= */
             <div className="flex-1 flex flex-col min-h-0">
+              {/* Mobile Account & Folder Switcher Bar (Visible only on < md) */}
+              <div className="md:hidden p-2.5 border-b border-[var(--border)] bg-[var(--bg-elevated)]/40 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 relative">
+                    <select
+                      value={selectedAccount}
+                      onChange={(e) => handleSwitchAccount(e.target.value)}
+                      className="w-full h-8 pl-8 pr-7 text-xs font-semibold rounded-xl bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-lime-600 dark:focus:border-brand appearance-none"
+                    >
+                      <option value="all">🌐 Semua Kotak Masuk</option>
+                      {allAccounts.map((acc, idx) => (
+                        <option key={idx} value={acc.email}>
+                          📧 {acc.email} ({acc.name})
+                        </option>
+                      ))}
+                    </select>
+                    <Globe className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-lime-700 dark:text-brand pointer-events-none" />
+                    <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Horizontal Scrollable Folder Pills */}
+                <div
+                  className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFolder('inbox');
+                      setPage(1);
+                      setSelectedThread(null);
+                      setThreads([]);
+                      setLoading(true);
+                    }}
+                    className={`px-3 py-1 rounded-xl text-xs font-semibold shrink-0 flex items-center gap-1.5 transition-all ${
+                      folder === 'inbox'
+                        ? 'bg-lime-700 text-white dark:bg-brand dark:text-[#0a0a0a] shadow-xs'
+                        : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border)]'
+                    }`}
+                  >
+                    <Inbox className="w-3.5 h-3.5" />
+                    <span>Kotak Masuk</span>
+                    {stats.unread_count > 0 && (
+                      <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-red-500 text-white font-mono font-bold">
+                        {stats.unread_count}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFolder('starred');
+                      setPage(1);
+                      setSelectedThread(null);
+                      setThreads([]);
+                      setLoading(true);
+                    }}
+                    className={`px-3 py-1 rounded-xl text-xs font-semibold shrink-0 flex items-center gap-1.5 transition-all ${
+                      folder === 'starred'
+                        ? 'bg-lime-700 text-white dark:bg-brand dark:text-[#0a0a0a] shadow-xs'
+                        : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border)]'
+                    }`}
+                  >
+                    <Star className="w-3.5 h-3.5" />
+                    <span>Berbintang</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFolder('sent');
+                      setPage(1);
+                      setSelectedThread(null);
+                      setThreads([]);
+                      setLoading(true);
+                    }}
+                    className={`px-3 py-1 rounded-xl text-xs font-semibold shrink-0 flex items-center gap-1.5 transition-all ${
+                      folder === 'sent'
+                        ? 'bg-lime-700 text-white dark:bg-brand dark:text-[#0a0a0a] shadow-xs'
+                        : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border)]'
+                    }`}
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Terkirim</span>
+                    {stats.sent_count > 0 && (
+                      <span className="text-[10px] opacity-80 font-mono">({stats.sent_count})</span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFolder('trash');
+                      setPage(1);
+                      setSelectedThread(null);
+                      setThreads([]);
+                      setLoading(true);
+                    }}
+                    className={`px-3 py-1 rounded-xl text-xs font-semibold shrink-0 flex items-center gap-1.5 transition-all ${
+                      folder === 'trash'
+                        ? 'bg-lime-700 text-white dark:bg-brand dark:text-[#0a0a0a] shadow-xs'
+                        : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border)]'
+                    }`}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Sampah</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Search & Action Bar Header */}
-              <div className="px-4 py-3 border-b border-[var(--border)] bg-[var(--bg-elevated)]/40 flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-[var(--border)] bg-[var(--bg-elevated)]/40 flex flex-wrap items-center justify-between gap-2 sm:gap-3 shrink-0">
                 {/* Search Input Bar (Gmail Pill Style) */}
-                <div className="relative flex-1 max-w-xl">
+                <div className="relative flex-1 min-w-[200px] max-w-xl">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
                   <Input
                     placeholder="Telusuri subjek, pengirim, atau isi pesan email..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && fetchThreads()}
-                    className="pl-10 h-10 text-xs rounded-full bg-[var(--bg-surface)] border-[var(--border)] shadow-xs focus:ring-1 focus:ring-lime-500"
+                    className="pl-10 h-9 sm:h-10 text-xs rounded-full bg-[var(--bg-surface)] border-[var(--border)] shadow-xs focus:ring-1 focus:ring-lime-500"
                   />
                   {search && (
                     <button
@@ -1372,7 +1485,7 @@ function AdminMailboxContent() {
                 <div className="flex items-center gap-2">
                   {/* Account Filter Badge Indicator */}
                   {selectedAccount !== 'all' && (
-                    <div className="px-2.5 py-1 bg-lime-500/10 dark:bg-brand/10 border border-lime-500/20 text-[11px] rounded-lg flex items-center gap-1.5 text-lime-800 dark:text-brand font-mono">
+                    <div className="hidden sm:flex px-2.5 py-1 bg-lime-500/10 dark:bg-brand/10 border border-lime-500/20 text-[11px] rounded-lg items-center gap-1.5 text-lime-800 dark:text-brand font-mono">
                       <span>Filter: {selectedAccount}</span>
                       <button
                         type="button"
@@ -1389,7 +1502,7 @@ function AdminMailboxContent() {
                     variant="outline"
                     size="sm"
                     onClick={() => fetchThreads()}
-                    className="h-9 px-3 text-xs gap-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                    className="h-8 sm:h-9 px-2.5 sm:px-3 text-xs gap-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                     title="Segarkan Kotak Masuk"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -1471,63 +1584,84 @@ function AdminMailboxContent() {
                       <div
                         key={t.id}
                         onClick={() => handleSelectThread(t)}
-                        className={`group px-4 py-3.5 flex items-center gap-3 cursor-pointer transition-all border-l-4 relative ${
+                        className={`group px-3 sm:px-4 py-3 sm:py-3.5 flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 cursor-pointer transition-all border-l-4 relative ${
                           isUnread
                             ? 'bg-lime-500/10 dark:bg-brand/10 hover:bg-lime-500/15 border-l-lime-600 dark:border-l-brand shadow-xs'
                             : 'hover:bg-[var(--bg-elevated)]/60 border-l-transparent opacity-85 hover:opacity-100'
                         }`}
                       >
-                        {/* Unread Status Dot Indicator */}
-                        <div className="w-3 flex items-center justify-center shrink-0">
-                          {isUnread ? (
+                        {/* Top Section on Mobile (Sender + Badges + Date) / Left on Desktop */}
+                        <div className="flex items-center justify-between sm:justify-start gap-2 min-w-0">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {/* Unread Status Dot Indicator */}
+                            <div className="w-3 flex items-center justify-center shrink-0">
+                              {isUnread ? (
+                                <span
+                                  className="w-2.5 h-2.5 rounded-full bg-lime-600 dark:bg-brand ring-4 ring-lime-500/20 shrink-0 animate-pulse"
+                                  title="Belum dibaca"
+                                />
+                              ) : (
+                                <span className="w-2 h-2 rounded-full bg-transparent" />
+                              )}
+                            </div>
+
+                            {/* Star Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => handleToggleStar(t.id, t.is_starred, e)}
+                              className="p-1 rounded-md text-[var(--text-muted)] hover:text-amber-400 hover:bg-amber-400/10 transition-colors shrink-0"
+                              title={t.is_starred ? 'Hapus bintang' : 'Beri bintang'}
+                            >
+                              <Star
+                                className={`w-4 h-4 ${
+                                  t.is_starred ? 'fill-amber-400 text-amber-400' : ''
+                                }`}
+                              />
+                            </button>
+
+                            {/* Sender / Recipient Name Column */}
+                            <div className="w-36 sm:w-48 lg:w-56 shrink-0 flex items-center gap-1.5 min-w-0">
+                              <span
+                                className={`text-xs truncate block ${
+                                  isUnread
+                                    ? 'font-black text-[var(--text-primary)] text-[13px]'
+                                    : 'font-normal text-[var(--text-muted)]'
+                                }`}
+                              >
+                                {senderDisplay}
+                              </span>
+                              {isUnread && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-lime-600 text-white dark:bg-brand dark:text-[#0a0a0a] shrink-0">
+                                  BARU
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Mobile-Only Date and Count */}
+                          <div className="flex items-center gap-1.5 sm:hidden shrink-0">
+                            {t.message_count > 1 && (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-[var(--bg-elevated)] border border-[var(--border)] text-[var(--text-secondary)]">
+                                {t.message_count}
+                              </span>
+                            )}
                             <span
-                              className="w-2.5 h-2.5 rounded-full bg-lime-600 dark:bg-brand ring-4 ring-lime-500/20 shrink-0 animate-pulse"
-                              title="Belum dibaca"
-                            />
-                          ) : (
-                            <span className="w-2 h-2 rounded-full bg-transparent" />
-                          )}
-                        </div>
-
-                        {/* Star Button */}
-                        <button
-                          type="button"
-                          onClick={(e) => handleToggleStar(t.id, t.is_starred, e)}
-                          className="p-1 rounded-md text-[var(--text-muted)] hover:text-amber-400 hover:bg-amber-400/10 transition-colors shrink-0"
-                          title={t.is_starred ? 'Hapus bintang' : 'Beri bintang'}
-                        >
-                          <Star
-                            className={`w-4 h-4 ${
-                              t.is_starred ? 'fill-amber-400 text-amber-400' : ''
-                            }`}
-                          />
-                        </button>
-
-                        {/* Sender / Recipient Name Column */}
-                        <div className="w-40 sm:w-52 lg:w-60 shrink-0 flex items-center gap-2 min-w-0">
-                          <span
-                            className={`text-xs truncate block ${
-                              isUnread
-                                ? 'font-black text-[var(--text-primary)] text-[13px]'
-                                : 'font-normal text-[var(--text-muted)]'
-                            }`}
-                          >
-                            {senderDisplay}
-                          </span>
-                          {isUnread && (
-                            <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-lime-600 text-white dark:bg-brand dark:text-[#0a0a0a] shrink-0">
-                              BARU
+                              className={`text-[11px] font-mono shrink-0 ${
+                                isUnread ? 'font-black text-lime-700 dark:text-brand' : 'text-[var(--text-muted)]'
+                              }`}
+                            >
+                              {formatEmailTime(t.last_message_at)}
                             </span>
-                          )}
+                          </div>
                         </div>
 
                         {/* Subject + Inline Snippet (Expands across full center width) */}
-                        <div className="flex-1 min-w-0 flex items-center gap-2">
+                        <div className="flex-1 min-w-0 flex items-center gap-2 pl-7 sm:pl-0">
                           <span
-                            className={`text-xs truncate shrink-0 max-w-[45%] ${
+                            className={`text-xs truncate shrink-0 max-w-[50%] sm:max-w-[45%] ${
                               isUnread
-                                ? 'font-black text-[var(--text-primary)] text-[13px]'
-                                : 'font-normal text-[var(--text-secondary)]'
+                                ? 'font-black text-[var(--text-primary)] text-[12px] sm:text-[13px]'
+                                : 'font-medium text-[var(--text-secondary)]'
                             }`}
                           >
                             {t.subject || '(Tanpa Subjek)'}
@@ -1555,14 +1689,14 @@ function AdminMailboxContent() {
 
                           {/* Recipient Badge in "All Inboxes" */}
                           {selectedAccount === 'all' && recipientEmail && (
-                            <span className="hidden md:inline-block px-2 py-0.5 rounded text-[9px] font-mono bg-[var(--bg-elevated)] border border-[var(--border)] text-[var(--text-muted)] truncate max-w-[130px] shrink-0">
+                            <span className="hidden lg:inline-block px-2 py-0.5 rounded text-[9px] font-mono bg-[var(--bg-elevated)] border border-[var(--border)] text-[var(--text-muted)] truncate max-w-[130px] shrink-0">
                               {recipientEmail}
                             </span>
                           )}
                         </div>
 
-                        {/* Date & Hover Action Bar */}
-                        <div className="flex items-center gap-2 shrink-0">
+                        {/* Desktop-Only Date & Hover Action Bar */}
+                        <div className="hidden sm:flex items-center gap-2 shrink-0">
                           {/* Hover Actions (Appear on mouse hover) */}
                           <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
                             <button

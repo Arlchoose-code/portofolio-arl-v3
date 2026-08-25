@@ -43,17 +43,18 @@ export async function generateMetadata(): Promise<Metadata> {
     'Portofolio profesional Syahril Haryono — Full Stack Developer & AI Enthusiast.';
   const favicon = site?.favicon_url || '';
   const ogImage = site?.og_image_default_url || site?.logo_url || site?.favicon_url || '';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://arlab.my.id';
 
   const formattedFavicon = favicon
     ? favicon.startsWith('http')
       ? favicon
-      : `http://localhost:8080${favicon}`
+      : `${siteUrl}${favicon}`
     : undefined;
 
   const formattedOgImage = ogImage
     ? ogImage.startsWith('http')
       ? ogImage
-      : `http://localhost:8080${ogImage}`
+      : `${siteUrl}${ogImage}`
     : undefined;
 
   return {
@@ -72,7 +73,7 @@ export async function generateMetadata(): Promise<Metadata> {
     ],
     authors: [{ name: siteName }],
     creator: siteName,
-    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
+    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://arlab.my.id'),
     icons: formattedFavicon ? { icon: formattedFavicon, shortcut: formattedFavicon, apple: formattedFavicon } : undefined,
     openGraph: {
       type: 'website',

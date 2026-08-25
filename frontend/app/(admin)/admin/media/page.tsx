@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { UploadCloud, Trash2, Copy, Check, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { getMediaUrl, getAbsoluteMediaUrl } from '@/lib/utils';
 
 export default function AdminMediaPage() {
   const [mediaList, setMediaList] = useState<Media[]>([]);
@@ -58,7 +59,7 @@ export default function AdminMediaPage() {
   };
 
   const copyUrl = (url: string, id: number, type: string) => {
-    const full = `http://localhost:8080${url}`;
+    const full = getAbsoluteMediaUrl(url);
     navigator.clipboard.writeText(full);
     const key = `${id}-${type}`;
     setCopiedLabel(key);
@@ -79,12 +80,12 @@ export default function AdminMediaPage() {
       <div className="rounded-2xl border-2 border-dashed border-[var(--border)] hover:border-lime-600 dark:hover:border-brand p-8 bg-[var(--bg-surface)] text-center transition-colors flex flex-col items-center justify-center gap-3">
         <UploadCloud className="w-12 h-12 text-[var(--text-muted)] animate-bounce" />
         <div>
-          <h3 className="text-sm font-bold text-[var(--text-primary)]">Unggah Berkas Media</h3>
-          <p className="text-xs text-[var(--text-muted)]">Format: JPEG, PNG, WebP (Maksimal 5MB)</p>
+          <h3 className="text-sm font-semibold text-[var(--text-primary)]">Unggah Berkas Baru</h3>
+          <p className="text-xs text-[var(--text-muted)]">Mendukung JPEG, PNG, dan WebP hingga 50MB</p>
         </div>
         <label className="cursor-pointer">
-          <Button variant="default" size="sm" disabled={uploading} asChild>
-            <span>{uploading ? 'Mengunggah...' : 'Pilih Berkas'}</span>
+          <Button variant="default" disabled={uploading} asChild className="bg-lime-700 hover:bg-lime-800 text-white dark:bg-brand dark:hover:bg-brand-hover dark:text-[#0a0a0a]">
+            <span>{uploading ? 'Mengompres & Mengunggah...' : 'Pilih File'}</span>
           </Button>
           <input
             type="file"
@@ -116,7 +117,7 @@ export default function AdminMediaPage() {
             >
               <div className="aspect-video rounded-lg overflow-hidden bg-[var(--bg-elevated)] relative">
                 <img
-                  src={`http://localhost:8080${media.thumbnail_url || media.original_url}`}
+                  src={getMediaUrl(media.thumbnail_url || media.original_url)}
                   alt={media.original_name}
                   className="w-full h-full object-cover"
                 />

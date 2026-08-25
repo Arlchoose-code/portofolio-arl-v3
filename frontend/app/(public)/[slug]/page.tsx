@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { ArrowUpRight, Mail, Sparkles, MapPin, GraduationCap } from 'lucide-react';
 import { extractExcerptFromHtml } from '@/lib/seo-utils';
+import { getMediaUrl } from '@/lib/utils';
 
 interface StaticPageProps {
   params: Promise<{ slug: string }>;
@@ -81,7 +82,7 @@ export default async function StaticPage({ params }: StaticPageProps) {
                   <div className="relative rounded-3xl border border-[var(--border)] bg-[var(--bg-surface)] p-2.5 shadow-xl group hover:border-lime-600/40 dark:hover:border-brand/40 transition-all duration-300">
                     <div className="aspect-[4/5] rounded-2xl overflow-hidden bg-[var(--bg-elevated)] relative">
                       <img
-                        src={profilePhoto.startsWith('http') ? profilePhoto : `http://localhost:8080${profilePhoto}`}
+                        src={getMediaUrl(profilePhoto)}
                         alt={siteName}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
