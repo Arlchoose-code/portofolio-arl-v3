@@ -21,10 +21,10 @@ func NewEmailWebhookController() *EmailWebhookController {
 	return &EmailWebhookController{}
 }
 
-// isAllowedInboundRecipient verifies if the incoming recipient email belongs to a configured account or whitelist
+// isAllowedInboundRecipient verifies if the incoming recipient email belongs to a configured sender account
 func isAllowedInboundRecipient(toEmail string, setting *models.EmailSetting) bool {
 	if setting == nil {
-		return false
+		return true
 	}
 
 	target := strings.ToLower(strings.TrimSpace(toEmail))
@@ -32,40 +32,20 @@ func isAllowedInboundRecipient(toEmail string, setting *models.EmailSetting) boo
 		return false
 	}
 
-	// 1. Check default sender email account
-	if defaultEmail := strings.ToLower(strings.TrimSpace(setting.DefaultSenderEmail)); defaultEmail != "" {
-		if target == defaultEmail {
-			return true
-		}
+	// 1. Always allow default sender email account (e.g. contact@arlab.my.id)
+	defaultEmail := strings.ToLower(strings.TrimSpace(setting.DefaultSenderEmail))
+	if defaultEmail == "" || target == defaultEmail {
+		return true
 	}
 
-	// 2. Check all custom sender identity accounts
+	// 2. Check all configured sender identity accounts
 	if setting.CustomSendersJSON != "" {
 		var senders []structs.SenderItem
 		if err := json.Unmarshal([]byte(setting.CustomSendersJSON), &senders); err == nil {
 			for _, s := range senders {
-				if s.Active && strings.ToLower(strings.TrimSpace(s.Email)) == target {
+				if strings.EqualFold(strings.TrimSpace(s.Email), target) {
 					return true
 				}
-			}
-		}
-	}
-
-	// 3. Check allowed inbound accounts whitelist (comma-separated: akunA@arlab.my.id, akunB@arlab.my.id, etc.)
-	whitelist := strings.TrimSpace(setting.AllowedInboundEmails)
-	if whitelist != "" {
-		items := strings.Split(whitelist, ",")
-		for _, item := range items {
-			clean := strings.ToLower(strings.TrimSpace(item))
-			if clean == "" {
-				continue
-			}
-			if clean == "*" || clean == target {
-				return true
-			}
-			// Domain wildcard support e.g. @arlab.my.id
-			if strings.HasPrefix(clean, "@") && strings.HasSuffix(target, clean) {
-				return true
 			}
 		}
 	}

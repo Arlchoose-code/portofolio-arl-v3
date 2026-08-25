@@ -207,18 +207,16 @@ function AdminMailboxContent() {
       }
     });
 
-    if (allowedInboundInput) {
-      allowedInboundInput.split(',').forEach((item) => {
-        const em = item.trim().toLowerCase();
-        if (em && em !== '*' && !em.startsWith('@') && !seen.has(em)) {
-          seen.add(em);
-          accs.push({ email: item.trim(), name: item.trim().split('@')[0], isDefault: false });
-        }
+    if (accs.length === 0) {
+      accs.push({
+        email: emailSetting?.default_sender_email || 'contact@arlab.my.id',
+        name: emailSetting?.default_sender_name || 'Syahril Haryono',
+        isDefault: true,
       });
     }
 
     return accs;
-  }, [sendersList, allowedInboundInput]);
+  }, [sendersList, emailSetting]);
 
   // Handle compose query parameters from contacts or external links
   useEffect(() => {
@@ -1584,10 +1582,10 @@ function AdminMailboxContent() {
                     <div>
                       <label className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
                         <User className="w-3.5 h-3.5 text-lime-700 dark:text-brand" />
-                        <span>Daftar Identitas Pengirim (Senders)</span>
+                        <span>Daftar Identitas &amp; Akun Email (Senders)</span>
                       </label>
                       <p className="text-[10px] text-[var(--text-muted)]">
-                        Pilih identitas mana yang digunakan saat mengirim atau membalas email.
+                        Kelola akun pengirim &amp; penerima email. Semua akun di daftar ini otomatis aktif menerima &amp; mengirim email.
                       </p>
                     </div>
 
@@ -1597,7 +1595,7 @@ function AdminMailboxContent() {
                       size="sm"
                       onClick={handleSyncBrevo}
                       disabled={syncingSenders || savingSettings}
-                      className="gap-1.5 text-xs py-1 h-7"
+                      className="gap-1.5 text-xs py-1 h-7 font-semibold"
                     >
                       <RefreshCw className={`w-3 h-3 ${syncingSenders ? 'animate-spin' : ''}`} />
                       <span>{syncingSenders ? 'Menyinkronkan...' : 'Sinkronkan dari Brevo'}</span>
@@ -1605,26 +1603,35 @@ function AdminMailboxContent() {
                   </div>
 
                   {/* Senders List */}
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
                     {sendersList.map((sender, idx) => (
                       <div
                         key={idx}
-                        className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
+                        className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
                           sender.is_default
-                            ? 'border-lime-500/50 bg-lime-500/5 dark:border-brand/40 dark:bg-brand/5'
-                            : 'border-[var(--border)] bg-[var(--bg-elevated)]/60'
+                            ? 'border-lime-500/60 bg-lime-500/10 dark:border-brand/60 dark:bg-brand/10 shadow-xs'
+                            : 'border-[var(--border)] bg-[var(--bg-elevated)]/60 hover:bg-[var(--bg-elevated)]'
                         }`}
                       >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-7 h-7 rounded-lg bg-[var(--bg-surface)] flex items-center justify-center font-bold text-xs text-lime-700 dark:text-brand border border-[var(--border)]">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <input
+                            type="radio"
+                            name="default_sender_radio"
+                            id={`sender_radio_${idx}`}
+                            checked={sender.is_default}
+                            onChange={() => handleSetDefaultSender(sender.email)}
+                            className="w-3.5 h-3.5 accent-lime-600 dark:accent-brand cursor-pointer shrink-0"
+                            title="Jadikan Akun Utama (Default)"
+                          />
+                          <div className="w-7 h-7 rounded-lg bg-[var(--bg-surface)] flex items-center justify-center font-bold text-xs text-lime-700 dark:text-brand border border-[var(--border)] shrink-0">
                             {sender.name.charAt(0).toUpperCase()}
                           </div>
                           <div className="truncate">
                             <div className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
                               <span>{sender.name}</span>
                               {sender.is_default && (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-500/20 text-lime-700 dark:text-brand">
-                                  Default
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-lime-500/20 text-lime-700 dark:text-brand border border-lime-500/30">
+                                  Default Utama
                                 </span>
                               )}
                             </div>
@@ -1635,21 +1642,21 @@ function AdminMailboxContent() {
                         </div>
 
                         <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                          {!sender.is_default && (
+                          {!sender.is_default ? (
                             <button
                               type="button"
                               onClick={() => handleSetDefaultSender(sender.email)}
-                              className="px-2 py-1 rounded-lg text-[10px] font-semibold text-[var(--text-secondary)] hover:text-lime-700 dark:hover:text-brand hover:bg-[var(--accent-soft)] transition-colors"
+                              className="px-2 py-1 rounded-lg text-[10px] font-semibold text-[var(--text-secondary)] hover:text-lime-700 dark:hover:text-brand hover:bg-[var(--accent-soft)] transition-colors border border-[var(--border)]"
                             >
                               Jadikan Default
                             </button>
-                          )}
+                          ) : null}
                           {sendersList.length > 1 && (
                             <button
                               type="button"
                               onClick={() => handleDeleteCustomSender(sender.email)}
-                              className="p-1 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors"
-                              title="Hapus Pengirim"
+                              className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors"
+                              title="Hapus Akun Pengirim"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -1688,25 +1695,17 @@ function AdminMailboxContent() {
                       </Button>
                     </div>
                   </div>
-                </div>
 
-                {/* Allowed Inbound Recipient Accounts (Filter Masuk) */}
-                <div className="space-y-2 pt-2 border-t border-[var(--border)]">
-                  <label className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
-                    <Shield className="w-3.5 h-3.5 text-lime-700 dark:text-brand" />
-                    <span>Akun / Alamat Penerima yang Diizinkan Masuk (Inbound Whitelist)</span>
-                  </label>
-                  <Input
-                    placeholder="contact@arlab.my.id, syahril@arlab.my.id, admin@arlab.my.id"
-                    value={allowedInboundInput}
-                    onChange={(e) => setAllowedInboundInput(e.target.value)}
-                    disabled={savingSettings}
-                  />
-                  <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
-                    💡 Pisahkan dengan koma jika ada beberapa akun (misal: <code>contact@arlab.my.id, syahril@arlab.my.id, info@arlab.my.id</code>).
-                    <br />
-                    🔒 <strong>Sistem Keamanan:</strong> Email yang masuk ke alamat di luar akun terdaftar akan <strong>otomatis ditolak</strong> untuk mencegah spam alamat acak.
-                  </p>
+                  {/* Automatic Inbound & Multi-Account Information Note */}
+                  <div className="p-2.5 rounded-xl bg-lime-500/10 dark:bg-brand/10 border border-lime-500/20 text-[11px] text-[var(--text-secondary)] flex items-start gap-2 leading-relaxed">
+                    <Check className="w-4 h-4 text-lime-700 dark:text-brand shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-[var(--text-primary)]">Otomatis Terhubung Kirim &amp; Terima:</strong>
+                      <span className="ml-1 text-[var(--text-muted)]">
+                        Seluruh akun di atas otomatis diizinkan menerima email masuk di Webmail dan dapat dipilih saat mengirim/membalas pesan. Email ke alamat acak di luar daftar akan otomatis ditolak demi keamanan.
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Reply-To Defaults */}
