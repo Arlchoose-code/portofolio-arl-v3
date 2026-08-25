@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { useTheme } from 'next-themes';
 
 interface TurnstileWidgetProps {
   siteKey?: string;
@@ -40,7 +41,9 @@ export function TurnstileWidget({
   theme = 'auto',
   className = '',
 }: TurnstileWidgetProps) {
+  const { resolvedTheme } = useTheme();
   const effectiveSiteKey = siteKey || process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '';
+  const effectiveTheme = theme === 'auto' ? (resolvedTheme === 'dark' ? 'dark' : 'light') : theme;
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
@@ -93,7 +96,7 @@ export function TurnstileWidget({
         'expired-callback': () => {
           if (onExpire) onExpire();
         },
-        theme,
+        theme: effectiveTheme,
         size: 'flexible',
       });
 
@@ -112,7 +115,7 @@ export function TurnstileWidget({
         widgetIdRef.current = null;
       }
     };
-  }, [isScriptLoaded, effectiveSiteKey, theme]);
+  }, [isScriptLoaded, effectiveSiteKey, effectiveTheme]);
 
   if (!effectiveSiteKey) return null;
 
