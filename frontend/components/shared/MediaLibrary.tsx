@@ -5,7 +5,7 @@ import { mediaApi } from '@/lib/api';
 import { Media } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from './ConfirmDialog';
-import { Image as ImageIcon, UploadCloud, X, Trash2, Check } from 'lucide-react';
+import { Image as ImageIcon, UploadCloud, X, Trash2, Check, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { getMediaUrl } from '@/lib/utils';
 
@@ -132,15 +132,15 @@ export function MediaLibrary({ open, onSelect, onClose }: MediaLibraryProps) {
                   Pilih atau seret gambar ke sini
                 </h3>
                 <p className="text-xs text-[var(--text-muted)] mb-6 max-w-sm">
-                  Format yang didukung: JPEG, PNG, WebP, GIF, dan iPhone HEIC/HEIF. Gambar akan otomatis dikompresi dan dikonversi ke WebP multi-tier.
+                  Format yang didukung: JPEG, PNG, WebP, GIF, PDF, dan iPhone HEIC/HEIF. Gambar akan otomatis dikompresi dan dikonversi ke WebP multi-tier.
                 </p>
                 <label className="cursor-pointer">
                   <Button variant="default" disabled={uploading} asChild>
-                    <span>{uploading ? 'Mengunggah...' : 'Pilih File Gambar'}</span>
+                    <span>{uploading ? 'Mengunggah...' : 'Pilih File Gambar / PDF'}</span>
                   </Button>
                   <input
                     type="file"
-                    accept="image/*,image/jpeg,image/png,image/webp,image/gif"
+                    accept="image/*,application/pdf,image/jpeg,image/png,image/webp,image/gif"
                     onChange={handleFileUpload}
                     className="hidden"
                     disabled={uploading}
@@ -165,6 +165,8 @@ export function MediaLibrary({ open, onSelect, onClose }: MediaLibraryProps) {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 {mediaList.map((media) => {
                   const isSelected = selectedMedia?.id === media.id;
+                  const isPdfDoc = media.mime_type === 'application/pdf' || media.original_name?.toLowerCase().endsWith('.pdf') || media.original_url?.toLowerCase().endsWith('.pdf');
+
                   return (
                     <div
                       key={media.id}
@@ -175,11 +177,23 @@ export function MediaLibrary({ open, onSelect, onClose }: MediaLibraryProps) {
                           : 'border-[var(--border)] hover:border-[var(--border-hover)] bg-[var(--bg-elevated)]'
                       }`}
                     >
-                      <img
-                        src={getMediaUrl(media.thumbnail_url || media.original_url)}
-                        alt={media.original_name}
-                        className="w-full h-full object-cover"
-                      />
+                      {isPdfDoc ? (
+                        <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-rose-500/10 dark:bg-rose-500/15 gap-1.5">
+                          <FileText className="w-8 h-8 text-rose-600 dark:text-rose-400" />
+                          <span className="text-[11px] font-mono font-bold text-[var(--text-primary)] truncate max-w-full px-1">
+                            {media.original_name}
+                          </span>
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-500/20 text-rose-700 dark:text-rose-300">
+                            PDF
+                          </span>
+                        </div>
+                      ) : (
+                        <img
+                          src={getMediaUrl(media.thumbnail_url || media.original_url)}
+                          alt={media.original_name}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                       {isSelected && (
                         <div className="absolute top-2 right-2 p-1 rounded-full bg-lime-700 text-white dark:bg-brand dark:text-[#0a0a0a] shadow-md">
                           <Check className="w-3.5 h-3.5 stroke-[3]" />

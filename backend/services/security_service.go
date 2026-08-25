@@ -23,6 +23,7 @@ var allowedMimeTypes = map[string]bool{
 	"image/heif":          true,
 	"image/heic-sequence": true,
 	"image/heif-sequence": true,
+	"application/pdf":     true,
 }
 
 func (s *SecurityService) ValidateFileSize(size int64, maxMB int64) bool {
@@ -71,6 +72,10 @@ func (s *SecurityService) CheckMagicBytes(file multipart.File) (string, error) {
 			if brand == "heic" || brand == "heix" || brand == "hevc" || brand == "hevx" || brand == "mif1" || brand == "msf1" {
 				return "image/heic", nil
 			}
+		}
+		// PDF check
+		if n >= 4 && string(buffer[:4]) == "%PDF" {
+			return "application/pdf", nil
 		}
 		return "", errors.New("invalid or unsupported file type")
 	}

@@ -5,7 +5,7 @@ import { mediaApi } from '@/lib/api';
 import { Media } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { UploadCloud, Trash2, Copy, Check, Image as ImageIcon } from 'lucide-react';
+import { UploadCloud, Trash2, Copy, Check, Image as ImageIcon, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { getMediaUrl, getAbsoluteMediaUrl } from '@/lib/utils';
 
@@ -81,7 +81,7 @@ export default function AdminMediaPage() {
         <UploadCloud className="w-12 h-12 text-[var(--text-muted)] animate-bounce" />
         <div>
           <h3 className="text-sm font-semibold text-[var(--text-primary)]">Unggah Berkas Baru</h3>
-          <p className="text-xs text-[var(--text-muted)]">Mendukung JPEG, PNG, dan WebP hingga 50MB</p>
+          <p className="text-xs text-[var(--text-muted)]">Mendukung JPEG, PNG, WebP, GIF, PDF, dan iPhone HEIC hingga 50MB</p>
         </div>
         <label className="cursor-pointer">
           <Button variant="default" disabled={uploading} asChild className="bg-lime-700 hover:bg-lime-800 text-white dark:bg-brand dark:hover:bg-brand-hover dark:text-[#0a0a0a]">
@@ -89,7 +89,7 @@ export default function AdminMediaPage() {
           </Button>
           <input
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/*,application/pdf,image/jpeg,image/png,image/webp,image/gif"
             onChange={handleFileUpload}
             disabled={uploading}
             className="hidden"
@@ -110,26 +110,41 @@ export default function AdminMediaPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {mediaList.map((media) => (
-            <div
-              key={media.id}
-              className="group rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden space-y-2 p-2 hover:border-[var(--border-hover)] transition-all"
-            >
-              <div className="aspect-video rounded-lg overflow-hidden bg-[var(--bg-elevated)] relative">
-                <img
-                  src={getMediaUrl(media.thumbnail_url || media.original_url)}
-                  alt={media.original_name}
-                  className="w-full h-full object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={() => setDeleteId(media.id)}
-                  className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 text-red-400 opacity-0 group-hover:opacity-100 hover:bg-red-600 hover:text-white transition-all"
-                  title="Hapus"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
+          {mediaList.map((media) => {
+            const isPdfDoc = media.mime_type === 'application/pdf' || media.original_name?.toLowerCase().endsWith('.pdf') || media.original_url?.toLowerCase().endsWith('.pdf');
+
+            return (
+              <div
+                key={media.id}
+                className="group rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden space-y-2 p-2 hover:border-[var(--border-hover)] transition-all"
+              >
+                <div className="aspect-video rounded-lg overflow-hidden bg-[var(--bg-elevated)] relative">
+                  {isPdfDoc ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-rose-500/10 dark:bg-rose-500/15 gap-1.5">
+                      <FileText className="w-8 h-8 text-rose-600 dark:text-rose-400" />
+                      <span className="text-[11px] font-mono font-bold text-[var(--text-primary)] truncate max-w-full px-1">
+                        {media.original_name}
+                      </span>
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-500/20 text-rose-700 dark:text-rose-300">
+                        PDF
+                      </span>
+                    </div>
+                  ) : (
+                    <img
+                      src={getMediaUrl(media.thumbnail_url || media.original_url)}
+                      alt={media.original_name}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setDeleteId(media.id)}
+                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 text-red-400 opacity-0 group-hover:opacity-100 hover:bg-red-600 hover:text-white transition-all"
+                    title="Hapus"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
 
               <div className="px-1 space-y-1">
                 <div className="text-xs font-semibold text-[var(--text-primary)] truncate" title={media.original_name}>
@@ -168,7 +183,8 @@ export default function AdminMediaPage() {
                 </div>
               </div>
             </div>
-          ))}
+          );
+        })}
         </div>
       )}
 

@@ -7,6 +7,7 @@ import (
 	"mime/multipart"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"portfolio-arl-backend/config"
 	"portfolio-arl-backend/models"
@@ -32,14 +33,53 @@ func (s *ImageService) UploadImage(fileHeader *multipart.FileHeader, cfg *config
 	}
 	defer srcFile.Close()
 
-	_, err = Security.CheckMagicBytes(srcFile)
+	detectedMime, err := Security.CheckMagicBytes(srcFile)
 	if err != nil {
 		return nil, fmt.Errorf("invalid file format: %w", err)
 	}
 
-	// Seek back to start of file for decoding
+	// Seek back to start of file for decoding/saving
 	if seeker, ok := srcFile.(io.ReadSeeker); ok {
 		_, _ = seeker.Seek(0, io.SeekStart)
+	}
+
+	newID := uuid.New().String()
+	baseStorage := cfg.Storage.Path
+	origDir := filepath.Join(baseStorage, "originals")
+	medDir := filepath.Join(baseStorage, "medium")
+	thumbDir := filepath.Join(baseStorage, "thumbnails")
+	_ = os.MkdirAll(origDir, os.ModePerm)
+	_ = os.MkdirAll(medDir, os.ModePerm)
+	_ = os.MkdirAll(thumbDir, os.ModePerm)
+
+	// If the file is a PDF document, store it directly without image rasterization
+	if detectedMime == "application/pdf" || strings.HasSuffix(strings.ToLower(fileHeader.Filename), ".pdf") {
+		baseFilename := fmt.Sprintf("%s.pdf", newID)
+		origFilePath := filepath.Join(origDir, baseFilename)
+
+		dstFile, err := os.Create(origFilePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create destination pdf file: %w", err)
+		}
+		defer dstFile.Close()
+
+		if _, err := io.Copy(dstFile, srcFile); err != nil {
+			return nil, fmt.Errorf("failed to save pdf file: %w", err)
+		}
+
+		pdfUrl := fmt.Sprintf("/storage/media/originals/%s", baseFilename)
+		media := &models.Media{
+			Filename:     baseFilename,
+			OriginalName: fileHeader.Filename,
+			ThumbnailURL: pdfUrl,
+			MediumURL:    pdfUrl,
+			OriginalURL:  pdfUrl,
+			MimeType:     "application/pdf",
+			SizeBytes:    fileHeader.Size,
+			Width:        0,
+			Height:       0,
+		}
+		return media, nil
 	}
 
 	// Decode source image
@@ -53,16 +93,7 @@ func (s *ImageService) UploadImage(fileHeader *multipart.FileHeader, cfg *config
 	origHeight := bounds.Dy()
 
 	// Always convert & save as high-efficiency modern .webp
-	newID := uuid.New().String()
 	baseFilename := fmt.Sprintf("%s.webp", newID)
-
-	// Ensure destination folders exist
-	baseStorage := cfg.Storage.Path
-	origDir := filepath.Join(baseStorage, "originals")
-	medDir := filepath.Join(baseStorage, "medium")
-	thumbDir := filepath.Join(baseStorage, "thumbnails")
-	_ = os.MkdirAll(origDir, os.ModePerm)
-	_ = os.MkdirAll(medDir, os.ModePerm)
 	_ = os.MkdirAll(thumbDir, os.ModePerm)
 
 	// 1. Save Original converted to WebP (Quality: 85 - pristine quality with ~70-85% size reduction)
