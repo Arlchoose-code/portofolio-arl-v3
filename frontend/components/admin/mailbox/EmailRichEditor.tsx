@@ -60,6 +60,10 @@ export function EmailRichEditor({
   const [linkUrl, setLinkUrl] = useState('');
   const [linkText, setLinkText] = useState('');
 
+  // Undo / Redo live state
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -112,6 +116,10 @@ export function EmailRichEditor({
       const html = editor.getHTML();
       const text = editor.getText();
       onChange(html === '<p></p>' ? '' : html, text);
+    },
+    onTransaction: ({ editor }) => {
+      setCanUndo(editor.can().undo());
+      setCanRedo(editor.can().redo());
     },
     editorProps: {
       attributes: {
@@ -412,10 +420,10 @@ export function EmailRichEditor({
 
         <button
           type="button"
-          onClick={() => editor?.chain().focus().unsetAllMarks().clearNodes().run()}
+          onClick={() => editor?.chain().focus().unsetAllMarks().clearNodes().setParagraph().run()}
           disabled={disabled || !editor}
-          className="p-1.5 rounded-lg hover:bg-[var(--accent-soft)] transition-colors"
-          title="Hapus Pemformatan"
+          className="p-1.5 rounded-lg hover:bg-[var(--accent-soft)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+          title="Hapus Pemformatan Teks"
         >
           <Eraser className="w-3.5 h-3.5" />
         </button>
@@ -424,8 +432,12 @@ export function EmailRichEditor({
           <button
             type="button"
             onClick={() => editor?.chain().focus().undo().run()}
-            disabled={disabled || !editor?.can().undo()}
-            className="p-1.5 rounded-lg hover:bg-[var(--accent-soft)] disabled:opacity-30 transition-colors"
+            disabled={disabled || !editor || !canUndo}
+            className={`p-1.5 rounded-lg transition-colors ${
+              canUndo
+                ? 'hover:bg-[var(--accent-soft)] text-[var(--text-primary)] cursor-pointer'
+                : 'opacity-30 cursor-not-allowed text-[var(--text-muted)]'
+            }`}
             title="Urungkan (Ctrl+Z)"
           >
             <Undo className="w-3.5 h-3.5" />
@@ -433,8 +445,12 @@ export function EmailRichEditor({
           <button
             type="button"
             onClick={() => editor?.chain().focus().redo().run()}
-            disabled={disabled || !editor?.can().redo()}
-            className="p-1.5 rounded-lg hover:bg-[var(--accent-soft)] disabled:opacity-30 transition-colors"
+            disabled={disabled || !editor || !canRedo}
+            className={`p-1.5 rounded-lg transition-colors ${
+              canRedo
+                ? 'hover:bg-[var(--accent-soft)] text-[var(--text-primary)] cursor-pointer'
+                : 'opacity-30 cursor-not-allowed text-[var(--text-muted)]'
+            }`}
             title="Ulangi (Ctrl+Y)"
           >
             <Redo className="w-3.5 h-3.5" />
