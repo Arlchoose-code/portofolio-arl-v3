@@ -43,7 +43,7 @@ export function EmailHtmlViewer({
   const [parsedUnsubLink, setParsedUnsubLink] = useState<string | null>(null);
   const [previewMedia, setPreviewMedia] = useState<EmailAttachment | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [iframeHeight, setIframeHeight] = useState('150px');
+  const [iframeHeight, setIframeHeight] = useState('auto');
   const [isDark, setIsDark] = useState(false);
 
   // Sync theme with parent app
@@ -135,6 +135,9 @@ export function EmailHtmlViewer({
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <base target="_blank">
   <style>
+    *, *:before, *:after {
+      box-sizing: border-box !important;
+    }
     html, body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       font-size: 13px;
@@ -142,22 +145,41 @@ export function EmailHtmlViewer({
       color: ${isDark ? '#f1f5f9' : '#0f172a'};
       background: transparent;
       margin: 0;
-      padding: 8px 4px;
+      padding: 0;
       word-wrap: break-word;
       overflow-wrap: break-word;
-      overflow: hidden !important;
+      overflow-x: auto;
+      overflow-y: visible;
+      -webkit-text-size-adjust: 100%;
+    }
+    #email-content-wrapper {
+      box-sizing: border-box;
+      padding: 8px 4px;
+      margin: 0;
+      width: 100%;
+      min-height: 20px;
+      color: ${isDark ? '#f1f5f9' : '#0f172a'};
+      overflow: visible;
     }
     img {
       max-width: 100% !important;
       height: auto !important;
       border-radius: 6px;
+      display: inline-block;
     }
     a {
       color: ${isDark ? '#a3e635' : '#4d7c0f'} !important;
       text-decoration: underline;
+      word-break: break-all;
     }
     table {
       max-width: 100% !important;
+      width: auto !important;
+      table-layout: auto !important;
+    }
+    td, th {
+      max-width: 100% !important;
+      word-break: break-word !important;
     }
     pre, code {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -166,6 +188,8 @@ export function EmailHtmlViewer({
       color: ${isDark ? '#f1f5f9' : '#0f172a'};
       border-radius: 4px;
       padding: 2px 4px;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
     blockquote {
       margin: 8px 0;
@@ -176,18 +200,23 @@ export function EmailHtmlViewer({
   </style>
 </head>
 <body>
-  <div id="email-content-wrapper" style="box-sizing: border-box; padding: 4px; margin: 0; min-height: 20px; color: ${isDark ? '#f1f5f9' : '#0f172a'};">
+  <div id="email-content-wrapper">
     ${contentToDisplay || `<p style="color: ${isDark ? '#94a3b8' : '#64748b'}; font-style: italic;">(Isi email kosong)</p>`}
   </div>
   <script>
-    var lastSentHeight = 0;
     function measureAndSendHeight() {
       var el = document.getElementById('email-content-wrapper') || document.body;
       if (!el) return;
-      var h = Math.ceil(el.getBoundingClientRect().height || el.scrollHeight);
-      if (h > 10 && Math.abs(h - lastSentHeight) > 6) {
-        lastSentHeight = h;
-        window.parent.postMessage({ type: 'SET_IFRAME_HEIGHT', height: h + 16 }, '*');
+      var h = Math.max(
+        el.scrollHeight || 0,
+        el.offsetHeight || 0,
+        el.getBoundingClientRect().height || 0,
+        document.body ? document.body.scrollHeight || 0 : 0,
+        document.documentElement ? document.documentElement.scrollHeight || 0 : 0
+      );
+      h = Math.ceil(h);
+      if (h > 10) {
+        window.parent.postMessage({ type: 'SET_IFRAME_HEIGHT', height: h + 20 }, '*');
       }
     }
     window.addEventListener('load', measureAndSendHeight);
@@ -207,9 +236,11 @@ export function EmailHtmlViewer({
       }
     }
     measureAndSendHeight();
-    setTimeout(measureAndSendHeight, 100);
+    setTimeout(measureAndSendHeight, 50);
+    setTimeout(measureAndSendHeight, 150);
     setTimeout(measureAndSendHeight, 400);
-    setTimeout(measureAndSendHeight, 1200);
+    setTimeout(measureAndSendHeight, 1000);
+    setTimeout(measureAndSendHeight, 2000);
 
     document.addEventListener('mousemove', function(e) {
       try {
@@ -230,15 +261,21 @@ export function EmailHtmlViewer({
 </body>
 </html>`;
 
-  const handleIframeLoad = () => {
+  const syncHeight = () => {
     if (iframeRef.current) {
       try {
         const doc = iframeRef.current.contentDocument || iframeRef.current.contentWindow?.document;
         if (doc) {
           const wrapper = doc.getElementById('email-content-wrapper') || doc.body;
-          const height = Math.ceil(wrapper.getBoundingClientRect().height || wrapper.scrollHeight);
-          if (height > 10) {
-            setIframeHeight(`${height + 20}px`);
+          const h = Math.max(
+            wrapper.scrollHeight || 0,
+            wrapper.offsetHeight || 0,
+            wrapper.getBoundingClientRect().height || 0,
+            doc.body?.scrollHeight || 0,
+            doc.documentElement?.scrollHeight || 0
+          );
+          if (h > 10) {
+            setIframeHeight(`${Math.ceil(h) + 20}px`);
           }
         }
       } catch {}
@@ -246,9 +283,21 @@ export function EmailHtmlViewer({
   };
 
   useEffect(() => {
+    syncHeight();
+    const t1 = setTimeout(syncHeight, 100);
+    const t2 = setTimeout(syncHeight, 400);
+    const t3 = setTimeout(syncHeight, 1200);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [contentToDisplay, isDark]);
+
+  useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
       if (e.data && e.data.type === 'SET_IFRAME_HEIGHT' && typeof e.data.height === 'number') {
-        const nextH = Math.min(Math.max(e.data.height, 60), 10000);
+        const nextH = Math.min(Math.max(e.data.height, 60), 20000);
         setIframeHeight(`${nextH}px`);
       }
     };
@@ -321,15 +370,20 @@ export function EmailHtmlViewer({
       )}
 
       {/* Main Email HTML Sandbox Frame */}
-      <div className="rounded-xl overflow-hidden bg-white dark:bg-zinc-900/60 border border-[var(--border)] p-1">
+      <div className="rounded-xl overflow-hidden bg-white dark:bg-zinc-900/60 border border-[var(--border)] p-1.5 sm:p-2">
         <iframe
           ref={iframeRef}
           srcDoc={sandboxedSrcDoc}
           sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-          onLoad={handleIframeLoad}
-          scrolling="no"
-          className="w-full border-0 rounded-lg transition-all overflow-hidden"
-          style={{ height: iframeHeight, minHeight: '80px' }}
+          onLoad={() => {
+            syncHeight();
+            setTimeout(syncHeight, 50);
+            setTimeout(syncHeight, 150);
+            setTimeout(syncHeight, 400);
+            setTimeout(syncHeight, 1000);
+          }}
+          className="w-full border-0 rounded-lg transition-all"
+          style={{ height: iframeHeight, minHeight: '120px' }}
           title="Isi Pesan Email"
         />
       </div>
