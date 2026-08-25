@@ -113,17 +113,17 @@ export function ChatMessage({
           ) : !content ? (
             // Clean Searching / Command Loading State (No duplicate box)
             thinkingStep ? (
-              <div className="py-1">
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--bg-surface)] border border-lime-600/30 dark:border-brand/30 text-xs font-mono text-lime-800 dark:text-brand shadow-xs">
+              <div className="py-0.5 max-w-full overflow-hidden">
+                <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-[var(--bg-surface)] border border-lime-600/30 dark:border-brand/30 text-[11px] sm:text-xs font-mono text-lime-800 dark:text-brand shadow-xs max-w-full overflow-hidden">
                   {thinkingStep.action === 'command' || thinkingStep.label.startsWith('$') ? (
-                    <Terminal className="w-3.5 h-3.5 animate-pulse text-lime-600 dark:text-brand" />
+                    <Terminal className="w-3.5 h-3.5 animate-pulse text-lime-600 dark:text-brand shrink-0" />
                   ) : (
-                    <Search className="w-3.5 h-3.5 animate-pulse text-lime-600 dark:text-brand" />
+                    <Search className="w-3.5 h-3.5 animate-pulse text-lime-600 dark:text-brand shrink-0" />
                   )}
-                  <span className="font-medium truncate max-w-[260px]">
+                  <span className="font-medium truncate min-w-0 flex-1">
                     {thinkingStep.label.startsWith('$') ? 'Menjalankan gateway tool...' : thinkingStep.label}
                   </span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-lime-600 dark:bg-brand animate-ping ml-0.5 shrink-0" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-lime-600 dark:bg-brand animate-ping shrink-0" />
                 </div>
               </div>
             ) : (
@@ -146,9 +146,9 @@ export function ChatMessage({
             <div className="text-[13px] leading-relaxed chat-markdown">
               {/* Completed Search Pill (Only for non-terminal queries to avoid double render) */}
               {thinkingStep && thinkingStep.action !== 'command' && !thinkingStep.label.startsWith('$') && (
-                <div className="inline-flex items-center gap-1.5 mb-2 px-2.5 py-0.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] text-[11px] font-mono text-[var(--text-secondary)]">
+                <div className="inline-flex items-center gap-1.5 mb-2 px-2.5 py-0.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] text-[11px] font-mono text-[var(--text-secondary)] max-w-full overflow-hidden">
                   <Check className="w-3 h-3 text-emerald-500 shrink-0" />
-                  <span>{thinkingStep.label.replace('...', '')}</span>
+                  <span className="truncate min-w-0 flex-1">{thinkingStep.label.replace('...', '')}</span>
                 </div>
               )}
 
