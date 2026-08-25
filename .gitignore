@@ -46,9 +46,11 @@ backend/portfolio-backend
 backend/storage/media/originals/*
 backend/storage/media/medium/*
 backend/storage/media/thumbnails/*
+backend/storage/media/attachments/*
 !backend/storage/media/originals/.gitkeep
 !backend/storage/media/medium/.gitkeep
 !backend/storage/media/thumbnails/.gitkeep
+!backend/storage/media/attachments/.gitkeep
 
 # Database SQL Dumps & Backups
 *.sql
