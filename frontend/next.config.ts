@@ -22,6 +22,30 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: '/skills',
+        destination: '/about?tab=skills',
+        permanent: true,
+      },
+      {
+        source: '/experiences',
+        destination: '/about?tab=experience',
+        permanent: true,
+      },
+      {
+        source: '/certificates',
+        destination: '/about?tab=certificates',
+        permanent: true,
+      },
+      {
+        source: '/educations',
+        destination: '/about?tab=education',
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     const backendOrigin =
       process.env.BACKEND_INTERNAL_URL ||
