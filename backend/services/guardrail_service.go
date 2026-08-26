@@ -91,20 +91,22 @@ func (g *GuardrailService) GetPortfolioContext(db *gorm.DB) string {
 	for _, s := range socials {
 		builder.WriteString(fmt.Sprintf("• %s: [%s](%s)\n", s.Platform, s.URL, s.URL))
 	}
-	builder.WriteString("• Menu Navigasi Portofolio:\n")
+	builder.WriteString("• Menu Navigasi Resmi Website:\n")
 	builder.WriteString("  - Portofolio Proyek: [Lihat Semua Proyek](/projects)\n")
-	builder.WriteString("  - Sertifikasi & Lisensi: [Lihat Sertifikasi Resmi](/certificates)\n")
-	builder.WriteString("  - Riwayat Pengalaman Kerja: [Lihat Rekam Jejak Karier](/experiences)\n")
-	builder.WriteString("  - Peta Keahlian Teknis: [Lihat Technical Skills](/skills)\n")
-	builder.WriteString("  - Riwayat Pendidikan: [Lihat Riwayat Pendidikan](/educations)\n")
-	builder.WriteString("  - Profil Lengkap: [Tentang Profil Saya](/about)\n")
-	builder.WriteString("  - Pusat Web Tools & Utilitas: [Kunjungi Pusat Tools](/tools)\n\n")
+	builder.WriteString("  - Profil & Kualifikasi Lengkap: [Tentang Profil & Kualifikasi](/about)\n")
+	builder.WriteString("  - Tab Keahlian Teknis (Skills): [Lihat Keahlian Teknis](/about?tab=skills)\n")
+	builder.WriteString("  - Tab Rekam Jejak Pengalaman (Experiences): [Lihat Pengalaman Kerja](/about?tab=experience)\n")
+	builder.WriteString("  - Tab Sertifikasi & Lisensi (Certificates): [Lihat Sertifikasi Resmi](/about?tab=certificates)\n")
+	builder.WriteString("  - Tab Riwayat Pendidikan (Educations): [Lihat Riwayat Pendidikan](/about?tab=education)\n")
+	builder.WriteString("  - Pusat Web Tools & Utilitas: [Kunjungi Pusat Tools](/tools)\n")
+	builder.WriteString("  - Hubungi Syahril Haryono: [Halaman Kontak](/contact)\n\n")
 
 	// 3. Technical Skills & Categories (Dynamic from skill_categories & skills)
 	var cats []models.SkillCategory
 	db.Preload("Skills").Order("sort_order ASC").Find(&cats)
 	if len(cats) > 0 {
 		builder.WriteString("=== PENGUASAAN TEKNOLOGI & KEAHLIAN (SKILLS - DINAMIS) ===\n")
+		builder.WriteString("Tautan resmi untuk melihat daftar lengkap keahlian: [Lihat Keahlian Teknis](/about?tab=skills)\n")
 		for _, cat := range cats {
 			var skillNames []string
 			for _, s := range cat.Skills {
@@ -141,6 +143,7 @@ func (g *GuardrailService) GetPortfolioContext(db *gorm.DB) string {
 	db.Order("sort_order ASC").Find(&exps)
 	if len(exps) > 0 {
 		builder.WriteString("=== REKAM JEJAK PENGALAMAN KERJA (EXPERIENCES - DINAMIS) ===\n")
+		builder.WriteString("Tautan resmi untuk melihat riwayat pengalaman kerja: [Lihat Pengalaman Kerja](/about?tab=experience)\n")
 		for _, exp := range exps {
 			endDate := "Present"
 			if exp.EndDate != nil && *exp.EndDate != "" {
@@ -157,6 +160,7 @@ func (g *GuardrailService) GetPortfolioContext(db *gorm.DB) string {
 	db.Order("sort_order ASC").Find(&edus)
 	if len(edus) > 0 {
 		builder.WriteString("=== PENDIDIKAN & ORGANISASI (EDUCATIONS - DINAMIS) ===\n")
+		builder.WriteString("Tautan resmi untuk melihat riwayat pendidikan: [Lihat Riwayat Pendidikan](/about?tab=education)\n")
 		for _, edu := range edus {
 			endYear := "Present"
 			if edu.EndYear != nil && *edu.EndYear != "" {
@@ -173,6 +177,7 @@ func (g *GuardrailService) GetPortfolioContext(db *gorm.DB) string {
 	db.Order("sort_order ASC").Find(&certs)
 	if len(certs) > 0 {
 		builder.WriteString(fmt.Sprintf("=== SERTIFIKASI & LISENSI RESMI (%d SERTIFIKAT - DINAMIS) ===\n", len(certs)))
+		builder.WriteString("Tautan resmi untuk melihat sertifikat terverifikasi: [Lihat Sertifikasi Resmi](/about?tab=certificates)\n")
 		for _, c := range certs {
 			credStr := ""
 			if c.CredentialURL != "" {
@@ -186,10 +191,14 @@ func (g *GuardrailService) GetPortfolioContext(db *gorm.DB) string {
 	// 8. Interactive Web Tools & Utilities (Dynamic from tool_settings)
 	var toolSettings []models.ToolSetting
 	db.Where("is_enabled = ?", true).Order("sort_order ASC").Find(&toolSettings)
+	gameCheckerSlug := "game-checker"
 	if len(toolSettings) > 0 {
 		builder.WriteString(fmt.Sprintf("=== FITUR WEB TOOLS & UTILITIES AKTIF DI WEBSITE (%d TOOLS - DINAMIS) ===\n", len(toolSettings)))
 		builder.WriteString("Website Syahril Haryono memiliki halaman Pusat Tools di [Pusat Tools](/tools). Jika pengunjung bertanya atau butuh tool berikut, berikan penjelasan ringkas dan link langsungnya:\n")
 		for _, ts := range toolSettings {
+			if ts.ToolType == "game-checker" || strings.Contains(strings.ToLower(ts.Slug), "game") {
+				gameCheckerSlug = ts.Slug
+			}
 			badgeStr := ""
 			if ts.Badge != "" {
 				badgeStr = fmt.Sprintf(" [%s]", ts.Badge)
@@ -210,8 +219,8 @@ func (g *GuardrailService) GetPortfolioContext(db *gorm.DB) string {
 			if g.HasZoneId {
 				zoneStr = "User ID + Zone/Server ID"
 			}
-			builder.WriteString(fmt.Sprintf("• %s (Kategori: %s, Format: %s) -> [Buka Tool %s](/tools/cek-nickname-game-online/%s)\n",
-				g.Name, g.Category, zoneStr, g.Name, g.Slug))
+			builder.WriteString(fmt.Sprintf("• %s (Kategori: %s, Format: %s) -> [Buka Tool %s](/tools/%s/%s)\n",
+				g.Name, g.Category, zoneStr, g.Name, gameCheckerSlug, g.Slug))
 		}
 		builder.WriteString("\n")
 	}
