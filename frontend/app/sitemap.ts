@@ -89,9 +89,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // 2. Dynamic Web Tools & Utilities
     const toolSettings = await getPublicToolSettings();
+    let gameToolSlug = 'game-checker';
     if (Array.isArray(toolSettings)) {
       toolSettings.forEach((tool: ToolSetting) => {
         if (tool.slug) {
+          if (tool.tool_type === 'game-checker' || tool.slug.toLowerCase().includes('game')) {
+            gameToolSlug = tool.slug;
+          }
           routes.push({
             url: `${baseUrl}/tools/${tool.slug}`,
             lastModified: tool.updated_at ? new Date(tool.updated_at) : new Date(),
@@ -107,9 +111,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (Array.isArray(games)) {
       games.forEach((game: GameTool) => {
         if (game.slug && game.is_active) {
-          // Add canonical /tools/game-checker/[gameSlug]
           routes.push({
-            url: `${baseUrl}/tools/game-checker/${game.slug}`,
+            url: `${baseUrl}/tools/${gameToolSlug}/${game.slug}`,
             lastModified: game.updated_at ? new Date(game.updated_at) : new Date(),
             changeFrequency: 'weekly',
             priority: 0.7,
