@@ -256,13 +256,9 @@ func (ctrl *ChatController) DeleteSession(c *gin.Context) {
 		return
 	}
 
-	var session models.ChatSession
-	if err := config.DB.Where("session_key = ?", sessionKey).First(&session).Error; err == nil {
-		_ = config.DB.Where("session_id = ?", session.ID).Delete(&models.ChatMessage{})
-		_ = config.DB.Delete(&session)
-	}
-
-	c.JSON(http.StatusOK, structs.SuccessResponse("Chat history deleted successfully", nil))
+	// Preserve chat history in database so site admin retains audit and visitor inquiry logs.
+	// Only admin via /api/admin/chat-sessions has permission to permanently delete records.
+	c.JSON(http.StatusOK, structs.SuccessResponse("Chat history reset successfully", nil))
 }
 
 func sendSSEEvent(w io.Writer, event string, data any) {
