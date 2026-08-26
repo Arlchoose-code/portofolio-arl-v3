@@ -20,7 +20,11 @@ export async function generateMetadata(): Promise<Metadata> {
     siteInfo?.site?.description ||
     'Hubungi Syahril Haryono untuk kolaborasi proyek, konsultasi teknologi, atau peluang karier.';
 
-  const image = page?.image_url || siteInfo?.site?.hero_background_url || seo?.og_image_url;
+  const image =
+    seo?.og_image_url ||
+    page?.image_url ||
+    siteInfo?.site?.og_image_default_url ||
+    siteInfo?.site?.favicon_url;
 
   return {
     title: { absolute: title.includes('Syahril Haryono') ? title : `${title} | Syahril Haryono` },

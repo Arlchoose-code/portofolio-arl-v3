@@ -268,16 +268,14 @@ export default function AdminSettingsPage() {
       ? `${siteName || 'Syahril Haryono'} ${titleSeparator} ${tagline || 'Full Stack Developer'}`
       : `${cleanPreviewHeading || 'Halaman'} ${titleSeparator} ${siteName || 'Syahril Haryono'}`;
 
-  const effectiveOgImage = ogImageUrl || ogDefaultUrl || logoUrl || faviconUrl;
+  const effectiveOgImage = ogImageUrl || ogDefaultUrl || faviconUrl;
   const effectiveOgSource = ogImageUrl
     ? 'Banner Khusus Halaman'
     : ogDefaultUrl
     ? 'Default OG Banner'
-    : logoUrl
-    ? 'Logo Website'
     : faviconUrl
-    ? 'Favicon'
-    : 'Default Sistem';
+    ? 'Favicon Website (Fallback Otomatis)'
+    : 'Belum Ada';
 
   return (
     <div className="space-y-8 w-full">

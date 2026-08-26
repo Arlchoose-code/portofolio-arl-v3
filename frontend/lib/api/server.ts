@@ -102,6 +102,11 @@ export async function getPublicToolSettingBySlug(slug: string): Promise<ToolSett
   );
 }
 
+export async function getPublicGames(): Promise<GameTool[]> {
+  const res = await fetchServer<GameTool[]>('/public/tools/games');
+  return res.status ? res.data : [];
+}
+
 export async function getPublicGameBySlug(slug: string): Promise<GameTool | null> {
   const res = await fetchServer<GameTool>(`/public/tools/games/${encodeURIComponent(slug)}`);
   return res.status ? res.data : null;

@@ -42,7 +42,7 @@ export async function generateMetadata(): Promise<Metadata> {
     site?.description ||
     'Portofolio profesional Syahril Haryono — Full Stack Developer & AI Enthusiast.';
   const favicon = site?.favicon_url || '';
-  const ogImage = site?.og_image_default_url || site?.logo_url || site?.favicon_url || '';
+  const ogImage = site?.og_image_default_url || site?.favicon_url || '';
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://arlab.my.id';
 
   const formattedFavicon = favicon
