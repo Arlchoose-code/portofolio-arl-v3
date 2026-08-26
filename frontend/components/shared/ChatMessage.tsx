@@ -7,6 +7,7 @@ import { ShieldAlert, ExternalLink, Copy, Check, Search, Sparkles, Terminal } fr
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ThinkingStep } from '@/types';
+import { formatChatMarkdown } from '@/lib/chat-utils';
 
 interface ChatMessageProps {
   role: 'user' | 'assistant' | 'system';
@@ -288,7 +289,7 @@ export function ChatMessage({
                   },
                 }}
               >
-                {content}
+                {formatChatMarkdown(content)}
               </ReactMarkdown>
 
               {isStreaming && (

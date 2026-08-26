@@ -289,6 +289,7 @@ export interface EmailAttachment {
   url: string;
   size: number;
   content_type?: string;
+  content_id?: string;
   content_b64?: string;
 }
 

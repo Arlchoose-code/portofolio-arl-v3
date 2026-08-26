@@ -15,6 +15,7 @@ import {
   ChevronUp,
   ShieldCheck,
 } from 'lucide-react';
+import { getMediaUrl } from '@/lib/utils';
 import { EmailAttachment } from '@/types';
 
 interface EmailHtmlViewerProps {
@@ -125,23 +126,46 @@ export function EmailHtmlViewer({
     return { mainContent: raw, quotedContent: '', hasQuote: false };
   }, [html, text]);
 
-  // Prepare safe sandboxed HTML for iframe
-  const contentToDisplay = showQuoted ? `${mainContent}${quotedContent ? `<hr style="margin: 16px 0; border: none; border-top: 1px dashed ${isDark ? '#475569' : '#cbd5e1'};" /><div style="border-left: 2px solid ${isDark ? '#64748b' : '#94a3b8'}; padding-left: 12px; margin-top: 12px; color: ${isDark ? '#94a3b8' : '#64748b'}; font-size: 12px;">${quotedContent}</div>` : ''}` : mainContent;
+  // Prepare safe sandboxed HTML for iframe and resolve CID images
+  const contentToDisplay = React.useMemo(() => {
+    let rawContent = showQuoted
+      ? `${mainContent}${quotedContent ? `<hr style="margin: 16px 0; border: none; border-top: 1px dashed ${isDark ? '#475569' : '#cbd5e1'};" /><div style="border-left: 2px solid ${isDark ? '#64748b' : '#94a3b8'}; padding-left: 12px; margin-top: 12px; color: ${isDark ? '#94a3b8' : '#64748b'}; font-size: 12px;">${quotedContent}</div>` : ''}`
+      : mainContent;
+
+    // Resolve inline CID image references from attachments
+    if (attachments && attachments.length > 0) {
+      attachments.forEach((att) => {
+        const targetUrl = att.content_b64
+          ? (att.content_b64.startsWith('data:') ? att.content_b64 : `data:${att.content_type || 'image/png'};base64,${att.content_b64}`)
+          : (att.url ? getMediaUrl(att.url) : '');
+
+        if (targetUrl) {
+          if (att.content_id) {
+            const cleanCid = att.content_id.replace(/^<|>$/g, '').trim();
+            rawContent = rawContent.replace(new RegExp(`cid:${cleanCid}`, 'gi'), targetUrl);
+          }
+          if (att.name) {
+            rawContent = rawContent.replace(new RegExp(`cid:${att.name}`, 'gi'), targetUrl);
+          }
+        }
+      });
+    }
+
+    return rawContent;
+  }, [mainContent, quotedContent, showQuoted, isDark, attachments]);
 
   const sandboxedSrcDoc = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
   <base target="_blank">
   <style>
-    *, *:before, *:after {
-      box-sizing: border-box !important;
-    }
     html, body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      font-size: 13px;
-      line-height: 1.6;
+      font-size: 14px;
+      line-height: 1.5;
       color: ${isDark ? '#f1f5f9' : '#0f172a'};
       background: transparent;
       margin: 0;
@@ -153,37 +177,22 @@ export function EmailHtmlViewer({
     }
     #email-content-wrapper {
       box-sizing: border-box;
-      padding: 8px 4px;
+      padding: 6px 4px;
       margin: 0;
       width: 100%;
       height: auto;
-      color: ${isDark ? '#f1f5f9' : '#0f172a'};
     }
     img {
-      max-width: 100% !important;
-      height: auto !important;
-      border-radius: 6px;
-      display: inline-block;
+      max-width: 100%;
+      height: auto;
     }
     a {
-      color: ${isDark ? '#a3e635' : '#4d7c0f'} !important;
-      text-decoration: underline;
-      word-break: break-all;
-    }
-    table {
-      max-width: 100% !important;
-      width: auto !important;
-      table-layout: auto !important;
-    }
-    td, th {
-      max-width: 100% !important;
-      word-break: break-word !important;
+      color: inherit;
     }
     pre, code {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 12px;
       background: ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)'};
-      color: ${isDark ? '#f1f5f9' : '#0f172a'};
       border-radius: 4px;
       padding: 2px 4px;
       white-space: pre-wrap;

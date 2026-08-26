@@ -9,6 +9,7 @@ import { ArrowLeft, User, Bot, Clock, ShieldAlert, Check, Copy, ExternalLink, Te
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { formatChatMarkdown } from '@/lib/chat-utils';
 
 function AdminCodeBlock({ language, code }: { language: string; code: string }) {
   const [copied, setCopied] = useState(false);
@@ -178,6 +179,35 @@ export default function ChatSessionDetailPage() {
                             em: ({ children }) => (
                               <em className="italic text-[var(--text-secondary)]">{children}</em>
                             ),
+                            hr: () => <hr className="my-2.5 border-[var(--border)]" />,
+                            table: ({ children }) => (
+                              <div className="my-3 overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-xs">
+                                <table className="w-full text-xs text-left border-collapse">{children}</table>
+                              </div>
+                            ),
+                            thead: ({ children }) => (
+                              <thead className="bg-[var(--bg-elevated)] text-[var(--text-secondary)] uppercase text-[10px] font-mono border-b border-[var(--border)]">
+                                {children}
+                              </thead>
+                            ),
+                            th: ({ children }) => (
+                              <th className="px-3 py-2.5 font-bold border-r border-[var(--border)] last:border-r-0 whitespace-nowrap">
+                                {children}
+                              </th>
+                            ),
+                            tbody: ({ children }) => (
+                              <tbody className="divide-y divide-[var(--border)]">{children}</tbody>
+                            ),
+                            tr: ({ children }) => (
+                              <tr className="hover:bg-lime-500/5 dark:hover:bg-brand/5 transition-colors">
+                                {children}
+                              </tr>
+                            ),
+                            td: ({ children }) => (
+                              <td className="px-3 py-2 text-xs border-r border-[var(--border)] last:border-r-0 text-[var(--text-primary)] leading-relaxed">
+                                {children}
+                              </td>
+                            ),
                             code: ({ inline, className, children, ...props }: any) => {
                               const match = /language-(\w+)/.exec(className || '');
                               const codeString = String(children).replace(/\n$/, '');
@@ -200,7 +230,7 @@ export default function ChatSessionDetailPage() {
                             },
                           }}
                         >
-                          {msg.content}
+                          {formatChatMarkdown(msg.content)}
                         </ReactMarkdown>
                       </div>
                     )}
