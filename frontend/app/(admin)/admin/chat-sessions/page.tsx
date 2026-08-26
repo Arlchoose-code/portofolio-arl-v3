@@ -80,10 +80,10 @@ export default function AdminChatSessionsPage() {
       ),
     },
     {
-      header: 'Rate Limit (Jam Ini)',
+      header: 'Total Pesan',
       accessor: (item) => (
-        <span className="text-xs font-mono font-bold text-lime-700 dark:text-brand">
-          {item.messages_this_hour} pesan
+        <span className="text-xs font-mono font-bold text-lime-700 dark:text-brand px-2 py-0.5 rounded-md bg-lime-500/10 border border-lime-500/20">
+          {item.messages ? item.messages.length : (item.messages_this_hour || 1)} Pesan
         </span>
       ),
     },

@@ -24,24 +24,7 @@ func NewChatController() *ChatController {
 
 func (ctrl *ChatController) CreateSession(c *gin.Context) {
 	sessionKey := uuid.New().String()
-	now := time.Now()
-
-	session := models.ChatSession{
-		SessionKey:       sessionKey,
-		IPAddress:        c.ClientIP(),
-		UserAgent:        c.GetHeader("User-Agent"),
-		MessagesThisHour: 0,
-		HourWindowStart:  now,
-		CreatedAt:        now,
-		LastActivityAt:   now,
-	}
-
-	if err := config.DB.Create(&session).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, structs.ErrorResponse("Failed to create chat session"))
-		return
-	}
-
-	c.JSON(http.StatusCreated, structs.SuccessResponse("Session created", structs.CreateChatSessionResponse{
+	c.JSON(http.StatusOK, structs.SuccessResponse("Session initialized", structs.CreateChatSessionResponse{
 		SessionKey: sessionKey,
 	}))
 }

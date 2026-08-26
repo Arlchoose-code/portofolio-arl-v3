@@ -18,8 +18,14 @@ func NewChatSessionController() *ChatSessionController {
 }
 
 func (ctrl *ChatSessionController) ListChatSessions(c *gin.Context) {
+	// Async cleanup legacy 0-message ghost sessions
+	go config.DB.Exec("DELETE FROM chat_sessions WHERE NOT EXISTS (SELECT 1 FROM chat_messages WHERE chat_messages.session_id = chat_sessions.id)")
+
 	params := services.Pagination.GetPaginationParams(c)
-	query := config.DB.Model(&models.ChatSession{}).Preload("Messages")
+	// Only query sessions with at least 1 actual message
+	query := config.DB.Model(&models.ChatSession{}).
+		Where("EXISTS (SELECT 1 FROM chat_messages WHERE chat_messages.session_id = chat_sessions.id)").
+		Preload("Messages")
 
 	if params.Search != "" {
 		query = query.Where("session_key LIKE ? OR ip_address LIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")

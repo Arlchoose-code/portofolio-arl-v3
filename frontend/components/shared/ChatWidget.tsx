@@ -53,21 +53,22 @@ export function ChatWidget() {
     if (saved) {
       setSessionKey(saved);
       loadHistory(saved);
-    } else {
-      createNewSession();
     }
   }, []);
 
-  const createNewSession = async () => {
-    const res = await chatApi.createSession();
-    if (res.status && res.data?.session_key) {
-      const key = res.data.session_key;
-      setSessionKey(key);
-      localStorage.setItem('portfolio_chat_session', key);
-      setMessages([]);
-      hasAnimatedGreetingRef.current = false;
+  const createNewSession = useCallback(async () => {
+    let key = '';
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      key = crypto.randomUUID();
+    } else {
+      key = `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     }
-  };
+    setSessionKey(key);
+    localStorage.setItem('portfolio_chat_session', key);
+    setMessages([]);
+    hasAnimatedGreetingRef.current = false;
+    return key;
+  }, []);
 
   const loadHistory = async (key: string) => {
     const res = await chatApi.getHistory(key);
@@ -231,12 +232,7 @@ export function ChatWidget() {
 
     let activeKey = sessionKey;
     if (!activeKey) {
-      const res = await chatApi.createSession();
-      if (res.status && res.data?.session_key) {
-        activeKey = res.data.session_key;
-        setSessionKey(activeKey);
-        localStorage.setItem('portfolio_chat_session', activeKey);
-      }
+      activeKey = await createNewSession();
     }
 
     // Append user message
